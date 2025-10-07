@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+/* Importar componentes CSS */
+@import './components/book-card.css';
+@import './components/empty-state.css';
+@import './components/success-message.css';
+@import "./components/auth/login.css";
+@import "./components/auth/auth-form.css";
+@import "./components/auth/auth-alert.css";
+@import "./components/animations.css";
+@import './components/pdf-viewer.css';
+@import "./components/auth/register.css";
+@import './layouts/book-information.css';
+
+body {
+    font-family: "Poppins", sans-serif;
+}

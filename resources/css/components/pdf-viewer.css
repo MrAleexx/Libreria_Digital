@@ -1,0 +1,175 @@
+/* PDF Viewer Component Styles - Brand Colors */
+:root {
+    --color-dark: #272b30;
+    --color-darker: #04050E;
+    --color-white: #ffffff;
+    --color-orange: #ea9216;
+    --color-blue: #052f5a;
+}
+
+.btn-primary {
+    @apply bg-[#ea9216] hover:bg-[#d48314] text-white px-4 py-3 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+}
+
+.btn-secondary {
+    @apply bg-[#052f5a] hover:bg-[#04274d] text-white px-4 py-3 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium shadow-md hover:shadow-lg;
+}
+
+.btn-outline {
+    @apply text-[#ea9216] hover:text-[#d48314] border-2 border-[#ea9216] hover:border-[#d48314] px-4 py-3 rounded-lg flex items-center gap-2 transition-all duration-200 font-medium;
+}
+
+.btn-icon {
+    @apply w-5 h-5;
+}
+
+.pdf-viewer-container {
+    @apply relative bg-[#f8f9fa] rounded-xl overflow-hidden mb-8 border border-[#e9ecef];
+}
+
+.pdf-viewer-wrapper {
+    @apply relative;
+    padding-top: 75%;
+}
+
+.pdf-iframe {
+    @apply absolute top-0 left-0 w-full h-full border-0;
+}
+
+.pdf-controls {
+    @apply absolute top-4 right-4 flex flex-col sm:flex-row gap-2 items-center;
+}
+
+.control-btn {
+    @apply bg-[#272b30] hover:bg-[#04050E] text-white p-2 rounded-lg transition-all duration-200 opacity-90 hover:opacity-100 shadow-lg;
+}
+
+.control-icon {
+    @apply w-4 h-4;
+}
+
+.mobile-controls {
+    @apply flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-lg border border-[#e9ecef];
+}
+
+.zoom-level {
+    @apply text-sm font-medium text-[#272b30] min-w-[3rem] text-center;
+}
+
+.pdf-loading {
+    @apply absolute inset-0 bg-white/90 flex flex-col items-center justify-center;
+}
+
+.loading-spinner {
+    @apply w-12 h-12 border-4 border-[#ea9216]/20 border-t-[#ea9216] rounded-full animate-spin mb-4;
+}
+
+.loading-text {
+    @apply text-[#272b30] font-medium;
+}
+
+.empty-state {
+    @apply text-center py-12 px-4;
+}
+
+.empty-state-icon {
+    @apply mb-4;
+}
+
+.empty-state-title {
+    @apply text-xl font-semibold text-[#04050E] mb-2;
+}
+
+.empty-state-description {
+    @apply text-[#272b30]/80 max-w-md mx-auto;
+}
+
+.book-details {
+    @apply border-t border-[#e9ecef] pt-8 mt-8;
+}
+
+.section-title {
+    @apply text-xl font-semibold text-[#04050E] mb-6;
+}
+
+.details-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+}
+
+.detail-item {
+    @apply flex justify-between items-center py-3 border-b border-[#f1f3f4];
+}
+
+.detail-label {
+    @apply font-medium text-[#272b30];
+}
+
+.detail-value {
+    @apply text-[#04050E] font-semibold;
+}
+
+.error-state {
+    @apply text-center text-red-600;
+}
+
+/* Gradient backgrounds */
+.gradient-header {
+    background: linear-gradient(135deg, #fef7ed 0%, #ffffff 100%);
+}
+
+.gradient-primary {
+    background: linear-gradient(135deg, #ea9216 0%, #f0a93a 100%);
+}
+
+.gradient-secondary {
+    background: linear-gradient(135deg, #052f5a 0%, #084085 100%);
+}
+
+/* Hover effects */
+.btn-primary:hover {
+    background: linear-gradient(135deg, #d48314 0%, #ea9216 100%);
+    box-shadow: 0 10px 25px -5px rgba(234, 146, 22, 0.4);
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #04274d 0%, #052f5a 100%);
+    box-shadow: 0 10px 25px -5px rgba(5, 47, 90, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pdf-controls {
+        @apply top-2 right-2;
+    }
+
+    .pdf-viewer-wrapper {
+        padding-top: 120%;
+    }
+
+    .mobile-controls {
+        @apply bg-white/95 backdrop-blur-sm;
+    }
+}
+
+:fullscreen .pdf-viewer-container {
+    @apply bg-white;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ea9216;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #d48314;
+}

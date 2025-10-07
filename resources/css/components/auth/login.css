@@ -1,0 +1,250 @@
+.login-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #04050E 0%, #272b30 50%, #052f5a 100%);
+    display: grid;
+    grid-template-columns: 1fr 440px;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-background {
+    position: relative;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(5, 47, 90, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(234, 146, 22, 0.2) 0%, transparent 50%),
+        linear-gradient(45deg, #04050E 0%, #272b30 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+/* Imagen de fondo */
+.login-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--banner-image) center/cover no-repeat;
+    opacity: 0.8;
+    filter: grayscale(0.3) brightness(0.8);
+    z-index: 1;
+}
+
+/* Texto de fallback - OCULTO cuando la imagen carga */
+.fallback-text {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    color: white;
+    max-width: 500px;
+    display: none;
+    /* Oculto por defecto */
+}
+
+/* Mostrar texto SOLO si la imagen NO carga */
+.login-background:not(:has(::before)) .fallback-text,
+.login-background:has(::before[style*="background-image: none"]) .fallback-text {
+    display: block;
+}
+
+/* ESTILOS del texto (cuando se muestra) */
+.banner-logo {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #ea9216, #ffffff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.banner-title {
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin-bottom: 30px;
+    line-height: 1.6;
+    color: #e5e7eb;
+}
+
+.banner-subtitle {
+    font-size: 1.1rem;
+    font-style: italic;
+    color: #ea9216;
+    margin-top: 30px;
+}
+
+.brand-highlight {
+    color: #ea9216;
+    font-weight: 600;
+}
+
+/* Resto de tu CSS permanece igual */
+.login-sidebar {
+    background: white;
+    position: relative;
+    overflow-y: auto;
+}
+
+.login-card {
+    padding: 60px 40px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .login-container {
+        grid-template-columns: 1fr;
+    }
+
+    .login-background {
+        display: none;
+    }
+
+    .login-sidebar {
+        min-height: 100vh;
+    }
+}
+
+@media (max-width: 768px) {
+    .login-card {
+        padding: 40px 24px;
+    }
+}
+
+/* Efectos de partículas */
+.particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.particle {
+    position: absolute;
+    background: rgba(234, 146, 22, 0.1);
+    border-radius: 50%;
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-20px) rotate(180deg);
+    }
+}
+
+.login-title {
+    font-size: 2.125rem;
+    font-weight: 800;
+    color: #04050E; 
+    margin-bottom: 16px;
+    line-height: 1.2;
+    text-align: center;
+    letter-spacing: -0.02em;
+}
+
+.login-subtitle {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #052f5a; 
+    line-height: 1.5;
+    text-align: center;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb; 
+}
+
+/* Responsive para login header */
+@media (max-width: 768px) {
+    .login-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+    
+    .login-subtitle {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .login-logo {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 24px;
+    }
+    
+    .login-logo svg {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .login-header {
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+    }
+}
+
+
+/* Estilos para el input group */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #ea9216;
+    box-shadow: 0 0 0 3px rgba(234, 146, 22, 0.1);
+}
+
+.form-input.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-error {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #ef4444;
+}
+
+/* Asegurar que el input tenga espacio para el ícono */
+.form-input.pr-10 {
+    padding-right: 2.5rem;
+}

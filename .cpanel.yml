@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/userdtemp/public_html/
+    - /bin/rsync -av --delete public/ $DEPLOYPATH
