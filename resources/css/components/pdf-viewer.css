@@ -165,11 +165,3 @@
     border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #ea9216;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #d48314;
-}
