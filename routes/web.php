@@ -25,6 +25,7 @@ use App\Policies\PrivacyPolicies;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\BookCategoryController;
 
 // RUTAS PUBLICAS
 Route::get('/', HomeController::class)->name('bookmart');
@@ -131,6 +132,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/claims/{claim}', [ClaimsController::class, 'destroy'])->name('claims.destroy');
 
     Route::get('contacts', [AdminController::class, 'contacts'])->name('contacts');
+
+    Route::get('/books/{book}/categories', [BookCategoryController::class, 'edit'])
+        ->name('admin.books.categories');
+    Route::put('/books/{book}/categories', [BookCategoryController::class, 'update'])
+        ->name('admin.books.categories.update');
 
     // Redirección por defecto
     Route::get('/', function () {

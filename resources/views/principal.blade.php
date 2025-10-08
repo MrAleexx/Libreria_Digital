@@ -366,6 +366,7 @@
 
 
     <!-- Libro Destacado Section -->
+    <!-- Libro Destacado Section -->
     <section class="py-16 bg-white">
         <div class="container mx-auto px-4">
             <div class="text-center mb-12">
@@ -376,90 +377,108 @@
                 </p>
             </div>
 
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-gradient-to-r from-[#052f5a] to-[#272b30] rounded-2xl p-8 md:p-12 shadow-2xl">
-                    <div class="grid md:grid-cols-2 gap-8 items-center">
-                        <!-- Imagen del libro -->
-                        <div class="relative group">
-                            <div class="relative z-10 transform group-hover:scale-105 transition-transform duration-500">
-                                <x-book-image :image="$book->image" :title="$book->title" class="w-full rounded-xl shadow-2xl" />
-                            </div>
-                            <div
-                                class="absolute inset-0 bg-[#ea9216] rounded-xl transform rotate-3 scale-105 opacity-20 group-hover:rotate-6 transition-transform duration-500">
-                            </div>
-                        </div>
-
-                        <!-- Información del libro -->
-                        <div class="text-white">
-                            <div class="flex items-center gap-2 mb-4">
-                                <span class="bg-[#ea9216] text-white px-3 py-1 rounded-full text-sm font-semibold">
-                                    🔥 Más Vendido
-                                </span>
-                                <span class="bg-white/20 px-3 py-1 rounded-full text-sm">
-                                    {{ $book->category->name ?? 'Educación' }}
-                                </span>
-                            </div>
-
-                            <h3 class="text-2xl md:text-3xl font-bold mb-4 leading-tight">
-                                {{ $book->title }}
-                            </h3>
-
-                            <p class="text-gray-200 mb-6 line-clamp-3">
-                                {{ $book->description ?? 'Descubre este increíble libro que está transformando la manera de aprender.' }}
-                            </p>
-
-                            <div class="flex items-center gap-4 mb-6">
-                                <div class="text-3xl font-bold text-[#ea9216]">
-                                    S/ {{ number_format($book->price, 2) }}
+            @if ($book)
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-gradient-to-r from-[#052f5a] to-[#272b30] rounded-2xl p-8 md:p-12 shadow-2xl">
+                        <div class="grid md:grid-cols-2 gap-8 items-center">
+                            <!-- Imagen del libro -->
+                            <div class="relative group">
+                                <div
+                                    class="relative z-10 transform group-hover:scale-105 transition-transform duration-500">
+                                    <x-book-image :image="$book->image" :title="$book->title"
+                                        class="w-full rounded-xl shadow-2xl" />
                                 </div>
-                                @if (isset($book->price_original) && $book->price_original > $book->price)
-                                    <div class="text-lg text-gray-300 line-through">
-                                        S/ {{ number_format($book->price_original, 2) }}
+                                <div
+                                    class="absolute inset-0 bg-[#ea9216] rounded-xl transform rotate-3 scale-105 opacity-20 group-hover:rotate-6 transition-transform duration-500">
+                                </div>
+                            </div>
+
+                            <!-- Información del libro -->
+                            <div class="text-white">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <span class="bg-[#ea9216] text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                        🔥 Más Vendido
+                                    </span>
+                                    <span class="bg-white/20 px-3 py-1 rounded-full text-sm">
+                                        {{ $book->category->name ?? 'Educación' }}
+                                    </span>
+                                </div>
+
+                                <h3 class="text-2xl md:text-3xl font-bold mb-4 leading-tight">
+                                    {{ $book->title }}
+                                </h3>
+
+                                <p class="text-gray-200 mb-6 line-clamp-3">
+                                    {{ $book->description ?? 'Descubre este increíble libro que está transformando la manera de aprender.' }}
+                                </p>
+
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="text-3xl font-bold text-[#ea9216]">
+                                        S/ {{ number_format($book->price, 2) }}
                                     </div>
-                                @endif
-                            </div>
-
-                            <!-- BOTONES -->
-                            <div class="flex flex-col sm:flex-row gap-3">
-                                @auth
-                                    <!-- Usuario autenticado: Ver detalles -->
-                                    <a href="{{ route('bookmart.book', ['book' => $book->id]) }}"
-                                        class="flex-1 bg-[#ea9216] hover:bg-[#d48314] text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 text-center">
-                                        <i class="fas fa-eye"></i>
-                                        Ver Detalles
-                                    </a>
-                                @else
-                                    <!-- Usuario no autenticado: Ver detalles -->
-                                    <a href="{{ route('bookmart.book', ['book' => $book->id]) }}"
-                                        class="flex-1 bg-[#ea9216] hover:bg-[#d48314] text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 text-center">
-                                        <i class="fas fa-eye"></i>
-                                        Ver Detalles
-                                    </a>
-                                @endauth
-
-                                <!-- Botón secundario para explorar más libros -->
-                                <a href="{{ route('homebook') }}"
-                                    class="bg-white/10 hover:bg-white/20 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 text-center border border-white/20 flex items-center justify-center gap-2">
-                                    <i class="fas fa-search"></i>
-                                    Explorar Más
-                                </a>
-                            </div>
-
-                            <!-- Características rápidas -->
-                            <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/20">
-                                <div class="flex items-center gap-2 text-sm">
-                                    <i class="fas fa-file-pdf text-[#ea9216]"></i>
-                                    <span>Formato PDF</span>
+                                    @if (isset($book->price_original) && $book->price_original > $book->price)
+                                        <div class="text-lg text-gray-300 line-through">
+                                            S/ {{ number_format($book->price_original, 2) }}
+                                        </div>
+                                    @endif
                                 </div>
-                                <div class="flex items-center gap-2 text-sm">
-                                    <i class="fas fa-download text-[#ea9216]"></i>
-                                    <span>Descarga Inmediata</span>
+
+                                <!-- BOTONES -->
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                    @auth
+                                        <!-- Usuario autenticado: Ver detalles -->
+                                        <a href="{{ route('bookmart.book', ['book' => $book->id]) }}"
+                                            class="flex-1 bg-[#ea9216] hover:bg-[#d48314] text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 text-center">
+                                            <i class="fas fa-eye"></i>
+                                            Ver Detalles
+                                        </a>
+                                    @else
+                                        <!-- Usuario no autenticado: Ver detalles -->
+                                        <a href="{{ route('bookmart.book', ['book' => $book->id]) }}"
+                                            class="flex-1 bg-[#ea9216] hover:bg-[#d48314] text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 text-center">
+                                            <i class="fas fa-eye"></i>
+                                            Ver Detalles
+                                        </a>
+                                    @endauth
+
+                                    <!-- Botón secundario para explorar más libros -->
+                                    <a href="{{ route('homebook') }}"
+                                        class="bg-white/10 hover:bg-white/20 text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 text-center border border-white/20 flex items-center justify-center gap-2">
+                                        <i class="fas fa-search"></i>
+                                        Explorar Más
+                                    </a>
+                                </div>
+
+                                <!-- Características rápidas -->
+                                <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/20">
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <i class="fas fa-file-pdf text-[#ea9216]"></i>
+                                        <span>Formato PDF</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-sm">
+                                        <i class="fas fa-download text-[#ea9216]"></i>
+                                        <span>Descarga Inmediata</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            @else
+                <!-- Mensaje cuando no hay libro destacado -->
+                <div class="max-w-2xl mx-auto text-center">
+                    <div class="bg-gray-50 rounded-2xl p-12 border-2 border-dashed border-gray-300">
+                        <i class="fas fa-book-open text-6xl text-gray-400 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-600 mb-4">Próximamente</h3>
+                        <p class="text-gray-500 mb-6">Estamos preparando nuestro próximo libro destacado.</p>
+                        <a href="{{ route('homebook') }}"
+                            class="bg-[#ea9216] hover:bg-[#d48314] text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 inline-flex items-center gap-2">
+                            <i class="fas fa-search"></i>
+                            Explorar Todos los Libros
+                        </a>
+                    </div>
+                </div>
+            @endif
         </div>
     </section>
 

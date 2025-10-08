@@ -5,6 +5,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Book extends Model
@@ -63,7 +64,6 @@ class Book extends Model
         'active' => 'boolean',
         'downloadable' => 'boolean',
         'pre_order' => 'boolean',
-
     ];
 
     // Relación con contribuidores
@@ -76,6 +76,12 @@ class Book extends Model
     public function contents(): HasMany
     {
         return $this->hasMany(BookContent::class);
+    }
+
+    // Relación con categorías
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'book_category');
     }
 
     // Obtener todos los autores
@@ -152,5 +158,52 @@ class Book extends Model
     public function scopePaid($query)
     {
         return $query->where('is_free', false);
+    }
+
+    // Scope para buscar por categoría
+    public function scopeByCategory($query, $categorySlug)
+    {
+        return $query->whereHas('categories', function ($query) use ($categorySlug) {
+            $query->where('slug', $categorySlug)->active();
+        });
+    }
+
+    // Obtener categorías principales del libro
+    public function getMainCategoriesAttribute()
+    {
+        return $this->categories()->whereNull('parent_id')->get();
+    }
+
+    // Método para sincronizar categorías
+    public function syncCategories(array $categoryIds)
+    {
+        return $this->categories()->sync($categoryIds);
+    }
+
+    // Método para agregar una categoría
+    public function addCategory($categoryId)
+    {
+        return $this->categories()->attach($categoryId);
+    }
+
+    // Método para remover una categoría
+    public function removeCategory($categoryId)
+    {
+        return $this->categories()->detach($categoryId);
+    }
+
+    // Obtener todas las categorías incluyendo subcategorías
+    public function getAllCategoriesAttribute()
+    {
+        return $this->categories()->with('parent')->get();
+    }
+
+    // Verificar si pertenece a una categoría específica
+    public function belongsToCategory($categorySlug): bool
+    {
+        return $this->categories()
+            ->where('slug', $categorySlug)
+            ->active()
+            ->exists();
     }
 }
