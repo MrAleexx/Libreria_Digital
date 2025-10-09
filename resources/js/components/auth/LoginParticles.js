@@ -1,3 +1,4 @@
+// resource/js/components/auth/LoginParticles.js
 export class LoginParticles {
     constructor(containerId = 'particles') {
         this.container = document.getElementById(containerId);

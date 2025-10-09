@@ -1,3 +1,4 @@
+// resource/js/components/auth/LoginForm.js
 import { FormValidator } from '../utils/formValidator.js';
 
 export class LoginForm {
@@ -11,6 +12,7 @@ export class LoginForm {
         if (this.form) {
             this.setupEventListeners();
             this.setupPasswordToggle();
+            this.setupMicrosoftButton();
         }
     }
 
@@ -33,7 +35,35 @@ export class LoginForm {
             toggleButton.addEventListener('click', () => {
                 const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                 passwordInput.setAttribute('type', type);
-                toggleButton.innerHTML = type === 'password' ? '👁️' : '👁️‍🗨️';
+
+                // Actualizar ícono
+                const icon = toggleButton.querySelector('i');
+                if (icon) {
+                    if (type === 'password') {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    } else {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    }
+                }
+            });
+        }
+    }
+
+    setupMicrosoftButton() {
+        const microsoftBtn = document.querySelector('.microsoft-btn');
+        if (microsoftBtn) {
+            microsoftBtn.addEventListener('click', (e) => {
+                // Opcional: agregar loading state al botón Microsoft
+                const originalText = microsoftBtn.innerHTML;
+                microsoftBtn.innerHTML = '<span>Conectando...</span>';
+                microsoftBtn.style.opacity = '0.7';
+
+                setTimeout(() => {
+                    microsoftBtn.innerHTML = originalText;
+                    microsoftBtn.style.opacity = '1';
+                }, 2000);
             });
         }
     }
@@ -73,7 +103,6 @@ export class LoginForm {
         this.setLoadingState(true);
 
         try {
-            // Simular envío (en producción, esto sería real)
             await this.submitForm();
         } catch (error) {
             this.handleSubmitError(error);
@@ -96,10 +125,8 @@ export class LoginForm {
     }
 
     async submitForm() {
-        // Aquí iría la lógica real de envío del formulario
         return new Promise((resolve) => {
             setTimeout(() => {
-                // Simular éxito
                 this.form.submit();
                 resolve();
             }, 1000);
@@ -108,7 +135,6 @@ export class LoginForm {
 
     handleSubmitError(error) {
         console.error('Error en el login:', error);
-        // Podrías mostrar un mensaje de error específico aquí
     }
 
     setLoadingState(loading) {

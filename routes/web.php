@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\BookController as AdminBookController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ClaimsController;
+use App\Http\Controllers\Auth\MicrosoftAuthController;
 use App\Policies\PrivacyPolicies;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -92,6 +93,14 @@ Route::middleware('auth')->prefix('bookmart')->group(function () {
     Route::get('/mis-pedidos', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/mis-pedidos/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/mis-pedidos/{order}/repeat', [OrderController::class, 'repeat'])->name('orders.repeat');
+
+    // RUTAS MICROSOFT AUTH 
+    Route::prefix('auth/microsoft')->group(function () {
+        Route::get('/redirect', [MicrosoftAuthController::class, 'redirect'])->name('microsoft.login');
+        Route::get('/callback', [MicrosoftAuthController::class, 'callback'])->name('microsoft.callback');
+    });
+
+    Route::post('/cerrar-sesion', [LogoutController::class, 'store'])->name('logout.store');
 });
 
 // PANEL DE ADMINISTRACIÓN

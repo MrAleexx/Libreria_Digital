@@ -1,3 +1,4 @@
+{{-- resource/views/components/auth/layouts/auth-container.blade.php --}}
 @props(['title', 'subtitle' => ''])
 
 <div class="login-container">

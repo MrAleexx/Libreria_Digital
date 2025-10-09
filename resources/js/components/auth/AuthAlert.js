@@ -1,3 +1,4 @@
+// resource/js/components/auth/AuthAlert.js
 export class AuthAlert {
     constructor() {
         this.alerts = document.querySelectorAll('.alert');

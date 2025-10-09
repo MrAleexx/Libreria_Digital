@@ -1,4 +1,5 @@
-/* Container principal más ancho */
+/* resource/css/components/auth/register.css */
+    /* Container principal más ancho */
 .register-container {
     min-height: 100vh;
     background: linear-gradient(135deg, #04050E 0%, #272b30 50%, #052f5a 100%);

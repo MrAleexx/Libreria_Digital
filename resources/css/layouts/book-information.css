@@ -632,7 +632,7 @@
 }
 
 /* Scroll personalizado */
-.tabs-nav::-webkit-scrollbar {
+/* .tabs-nav::-webkit-scrollbar {
     height: 4px;
 }
 
@@ -648,7 +648,7 @@
 
 .tabs-nav::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
-}
+} */
 
 /* Mejoras de accesibilidad */
 @media (prefers-reduced-motion: reduce) {
