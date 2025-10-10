@@ -1,3 +1,4 @@
+{{-- resources/views/admin/books/edit.blade.php --}}
 @extends('admin.layout')
 
 @section('title', 'Editar Libro')
@@ -17,6 +18,7 @@
                 'action' => route('admin.books.update', $book),
                 'method' => 'PUT',
                 'book' => $book,
+                'categories' => $categories,
             ])
 
             <!-- Gestión de Contribuidores -->

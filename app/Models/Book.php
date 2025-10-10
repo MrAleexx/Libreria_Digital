@@ -36,9 +36,7 @@ class Book extends Model
         'file_format',
         'file_size',
 
-        // Información Comercial
-        'price',
-        'is_free',
+        // Información de Lectura
         'reading_age',
         'publication_url',
 
@@ -50,20 +48,28 @@ class Book extends Model
         'is_new',
         'active',
         'downloadable',
-        'pre_order',
+
+        // ✅ NUEVO: Campos de Biblioteca
+        'total_downloads',
+        'total_views',
+        'featured',
+        'access_level',
+
         'published_at'
     ];
 
     protected $casts = [
         'publication' => 'date',
         'published_at' => 'datetime',
-        'price' => 'decimal:2',
-        'is_free' => 'boolean',
         'pages' => 'integer',
         'is_new' => 'boolean',
         'active' => 'boolean',
         'downloadable' => 'boolean',
-        'pre_order' => 'boolean',
+
+        // ✅ NUEVO: Casts para biblioteca
+        'total_downloads' => 'integer',
+        'total_views' => 'integer',
+        'featured' => 'boolean',
     ];
 
     // Relación con contribuidores
@@ -84,6 +90,12 @@ class Book extends Model
         return $this->belongsToMany(Category::class, 'book_category');
     }
 
+    // Relación con descargas de usuarios
+    public function downloads()
+    {
+        return $this->hasMany(UserDownload::class);
+    }
+
     // Obtener todos los autores
     public function getAllAuthorsAttribute(): string
     {
@@ -95,7 +107,7 @@ class Book extends Model
         return $authors->isNotEmpty() ? $authors->implode(', ') : 'Sin autor';
     }
 
-    // Obtener autor principal (ÚNICA VERSIÓN)
+    // Obtener autor principal
     public function getMainAuthorAttribute(): ?string
     {
         $mainAuthor = $this->contributors()
@@ -103,7 +115,7 @@ class Book extends Model
             ->orderBy('sequence_number')
             ->first();
 
-        return $mainAuthor?->full_name;
+        return $mainAuthor ? $mainAuthor->full_name : 'Sin autor';
     }
 
     // Obtener editores
@@ -136,6 +148,36 @@ class Book extends Model
             ->get();
     }
 
+    // ✅ NUEVO: Incrementar contador de vistas
+    public function incrementViews(): void
+    {
+        $this->increment('total_views');
+    }
+
+    // ✅ NUEVO: Incrementar contador de descargas
+    public function incrementDownloads(): void
+    {
+        $this->increment('total_downloads');
+    }
+
+    // ✅ NUEVO: Verificar si es accesible para un usuario
+    public function isAccessibleForUser($user = null): bool
+    {
+        if ($this->access_level === 'free') {
+            return true;
+        }
+
+        if ($this->access_level === 'premium' && $user && $user->hasPremiumAccess()) {
+            return true;
+        }
+
+        if ($this->access_level === 'institutional' && $user && $user->hasInstitutionalAccess()) {
+            return true;
+        }
+
+        return false;
+    }
+
     // Scope para libros activos
     public function scopeActive($query)
     {
@@ -148,16 +190,36 @@ class Book extends Model
         return $query->where('downloadable', true);
     }
 
-    // Scope para libros gratuitos
-    public function scopeFree($query)
+    // ✅ NUEVO: Scope para libros destacados
+    public function scopeFeatured($query)
     {
-        return $query->where('is_free', true);
+        return $query->where('featured', true);
     }
 
-    // Scope para libros pagados
-    public function scopePaid($query)
+    // ✅ NUEVO: Scope por nivel de acceso
+    public function scopeByAccessLevel($query, $level)
     {
-        return $query->where('is_free', false);
+        return $query->where('access_level', $level);
+    }
+
+    // ✅ NUEVO: Scope para libros más descargados
+    public function scopeMostDownloaded($query, $limit = 10)
+    {
+        return $query->orderBy('total_downloads', 'desc')->take($limit);
+    }
+
+    // ✅ NUEVO: Scope para libros más vistos
+    public function scopeMostViewed($query, $limit = 10)
+    {
+        return $query->orderBy('total_views', 'desc')->take($limit);
+    }
+
+    // ✅ NUEVO: Scope para libros nuevos
+    public function scopeNewArrivals($query, $limit = 10)
+    {
+        return $query->where('is_new', true)
+            ->orderBy('created_at', 'desc')
+            ->take($limit);
     }
 
     // Scope para buscar por categoría
@@ -205,5 +267,17 @@ class Book extends Model
             ->where('slug', $categorySlug)
             ->active()
             ->exists();
+    }
+
+    // ✅ NUEVO: Obtener estadísticas de uso
+    public function getUsageStatsAttribute(): array
+    {
+        return [
+            'total_views' => $this->total_views,
+            'total_downloads' => $this->total_downloads,
+            'download_ratio' => $this->total_views > 0
+                ? round(($this->total_downloads / $this->total_views) * 100, 2)
+                : 0,
+        ];
     }
 }

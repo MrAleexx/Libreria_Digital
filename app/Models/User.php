@@ -23,6 +23,12 @@ class User extends Authenticatable
         'institutional_email',
         'is_active',
         'last_login_at',
+        // NUEVOS CAMPOS
+        'is_temp_password',
+        'temp_password_expires_at',
+        'downloads_today',
+        'last_download_reset',
+        'created_by',
     ];
 
     protected $hidden = [
@@ -38,6 +44,11 @@ class User extends Authenticatable
             'role' => 'string',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            // NUEVOS CASTS
+            'is_temp_password' => 'boolean',
+            'temp_password_expires_at' => 'datetime',
+            'downloads_today' => 'integer',
+            'last_download_reset' => 'date',
         ];
     }
 
@@ -65,6 +76,62 @@ class User extends Authenticatable
     public function isInstitutional(): bool
     {
         return !is_null($this->microsoft_id);
+    }
+
+    // NUEVO: Verificar si la contraseña temporal está expirada
+    public function isTempPasswordExpired(): bool
+    {
+        return $this->is_temp_password &&
+            $this->temp_password_expires_at &&
+            $this->temp_password_expires_at->isPast();
+    }
+
+    // NUEVO: Verificar si puede descargar (límite de 5 por día)
+    public function canDownload(): bool
+    {
+        $this->resetDailyDownloadsIfNeeded();
+        return $this->downloads_today < 5;
+    }
+
+    // NUEVO: Resetear contador de descargas si es nuevo día
+    public function resetDailyDownloadsIfNeeded(): void
+    {
+        if (!$this->last_download_reset || $this->last_download_reset->lt(now()->startOfDay())) {
+            $this->update([
+                'downloads_today' => 0,
+                'last_download_reset' => now()->startOfDay()
+            ]);
+            $this->refresh();
+        }
+    }
+
+    // NUEVO: Incrementar contador de descargas
+    public function incrementDownloads(): void
+    {
+        $this->resetDailyDownloadsIfNeeded();
+        $this->increment('downloads_today');
+    }
+
+    // NUEVO: Relación con el admin que creó el usuario
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // NUEVO: Relación con las descargas
+    public function downloads()
+    {
+        return $this->hasMany(UserDownload::class);
+    }
+
+    // NUEVO: Scope para usuarios con contraseñas temporales
+    public function scopeWithTempPassword($query)
+    {
+        return $query->where('is_temp_password', true)
+            ->where(function ($q) {
+                $q->whereNull('temp_password_expires_at')
+                    ->orWhere('temp_password_expires_at', '>', now());
+            });
     }
 
     // Scope para usuarios activos

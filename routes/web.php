@@ -21,6 +21,8 @@ use App\Http\Controllers\Admin\BookController as AdminBookController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ClaimsController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\BookController;
 use App\Http\Controllers\Auth\MicrosoftAuthController;
 use App\Policies\PrivacyPolicies;
 use Illuminate\Support\Facades\Route;
@@ -94,7 +96,7 @@ Route::middleware('auth')->prefix('bookmart')->group(function () {
     Route::get('/mis-pedidos/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/mis-pedidos/{order}/repeat', [OrderController::class, 'repeat'])->name('orders.repeat');
 
-    // RUTAS MICROSOFT AUTH 
+    // RUTAS MICROSOFT AUTH
     Route::prefix('auth/microsoft')->group(function () {
         Route::get('/redirect', [MicrosoftAuthController::class, 'redirect'])->name('microsoft.login');
         Route::get('/callback', [MicrosoftAuthController::class, 'callback'])->name('microsoft.callback');
@@ -113,6 +115,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     // Gestión de usuarios
     Route::resource('users', AdminUserController::class);
+
+    Route::get('users/{user}/download-history', [AdminUserController::class, 'downloadHistory'])
+        ->name('users.download-history');
+
+    Route::patch('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])
+        ->name('users.toggle-status');
+
+    Route::get('users/import/form', [AdminUserController::class, 'showImportForm'])
+        ->name('users.import.form');
+
+    Route::post('users/import', [AdminUserController::class, 'import'])
+        ->name('users.import');
 
     // Gestión de órdenes
     Route::resource('orders', AdminOrderController::class);
@@ -141,6 +155,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::delete('/claims/{claim}', [ClaimsController::class, 'destroy'])->name('claims.destroy');
 
     Route::get('contacts', [AdminController::class, 'contacts'])->name('contacts');
+
+
+    // Gestión de categorías
+    Route::resource('categories', CategoryController::class);
+    Route::post('categories/{category}/toggle-status', [CategoryController::class, 'toggleStatus'])
+        ->name('categories.toggle-status');
 
     Route::get('/books/{book}/categories', [BookCategoryController::class, 'edit'])
         ->name('admin.books.categories');

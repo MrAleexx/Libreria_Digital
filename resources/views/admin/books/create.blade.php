@@ -18,6 +18,8 @@
                 'action' => route('admin.books.store'),
                 'method' => 'POST',
                 'book' => null,
+                'categories' => $categories,
+                'selectedCategories' => [],
             ])
 
             <div class="mt-8">
