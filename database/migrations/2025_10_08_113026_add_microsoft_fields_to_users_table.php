@@ -1,4 +1,4 @@
-<?php
+<?php*/
 // database/migrations/2024_01_20_000000_add_microsoft_fields_to_users_table.php
 
 use Illuminate\Database\Migrations\Migration;
@@ -38,3 +38,4 @@ return new class extends Migration
         });
     }
 };
+/*
