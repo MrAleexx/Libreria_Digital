@@ -1,3 +1,4 @@
+{{-- resource/views/components/auth/auth-alert.blade.php --}}
 @props(['type' => 'info', 'message' => '', 'duration' => 5000, 'autoDismiss' => true])
 
 @if ($message)

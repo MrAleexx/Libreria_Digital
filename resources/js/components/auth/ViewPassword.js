@@ -1,3 +1,4 @@
+// resource/js/components/auth/ViewPassword.js
 document.addEventListener('DOMContentLoaded', function () {
     const passwordToggles = document.querySelectorAll('.password-toggle');
 

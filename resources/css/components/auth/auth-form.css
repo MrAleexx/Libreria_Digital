@@ -1,3 +1,4 @@
+/* resource/css/components/auth/auth-form.css */
 .auth-form {
     width: 100%;
 }
@@ -200,12 +201,76 @@
     .grid-cols-2 {
         grid-template-columns: 1fr;
     }
-    
+
     .flex-col {
         flex-direction: column;
     }
-    
+
     .gap-3 {
         gap: 0.75rem;
     }
+}
+
+/* Estilos para Microsoft Auth */
+.microsoft-auth-section {
+    margin-bottom: 1.5rem;
+}
+
+.microsoft-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    color: #374151;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.microsoft-btn:hover {
+    border-color: #0078d4;
+    background: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.15);
+}
+
+.microsoft-btn:active {
+    transform: translateY(0);
+}
+
+.microsoft-btn svg {
+    color: #0078d4;
+}
+
+/* Separador */
+.separator {
+    position: relative;
+    text-align: center;
+    margin: 1.5rem 0;
+}
+
+.separator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e5e7eb;
+}
+
+.separator-text {
+    background: white;
+    padding: 0 1rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
 }

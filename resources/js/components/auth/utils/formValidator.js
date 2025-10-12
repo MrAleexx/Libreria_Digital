@@ -1,3 +1,4 @@
+// resource/js/components/auth/utils/formValidator.js
 export class FormValidator {
     validateField(field) {
         const value = field.value.trim();

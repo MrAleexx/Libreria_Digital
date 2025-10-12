@@ -1,3 +1,4 @@
+// resource/js/components/auth/RegisterForm.js
 import { LoginParticles } from '../LoginParticles.js';
 import { FormValidator } from '../Auth/Utils/FormValidator.js';
 

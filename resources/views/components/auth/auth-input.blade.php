@@ -1,3 +1,4 @@
+{{-- resource/views/components/auth/auth-input.blade.php --}}
 @props([
     'name',
     'label',

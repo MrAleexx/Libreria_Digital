@@ -1,4 +1,5 @@
 <?php
+// app/Policies/UserPolicy.php
 
 namespace App\Policies;
 
@@ -22,7 +23,6 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
-        // Admin puede ver cualquier usuario, usuarios solo pueden verse a sí mismos
         return $user->isAdmin() || $user->id === $model->id;
     }
 
@@ -39,7 +39,6 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
-        // Admin puede actualizar cualquier usuario, usuarios solo pueden actualizarse a sí mismos
         return $user->isAdmin() || $user->id === $model->id;
     }
 
@@ -48,12 +47,10 @@ class UserPolicy
      */
     public function delete(User $user, User $model): bool
     {
-        // No permitir que un usuario se elimine a sí mismo
         if ($user->id === $model->id) {
             return false;
         }
 
-        // Solo admin puede eliminar usuarios
         return $user->isAdmin();
     }
 
@@ -70,7 +67,6 @@ class UserPolicy
      */
     public function forceDelete(User $user, User $model): bool
     {
-        // No permitir auto-eliminación
         if ($user->id === $model->id) {
             return false;
         }
@@ -83,7 +79,6 @@ class UserPolicy
      */
     public function changeRole(User $user, User $model): bool
     {
-        // No permitir cambiar el propio rol
         if ($user->id === $model->id) {
             return false;
         }
@@ -96,8 +91,6 @@ class UserPolicy
      */
     public function viewSensitiveInfo(User $user, User $model): bool
     {
-        // Solo admin puede ver información sensible de otros usuarios
-        // Los usuarios solo pueden ver su propia información sensible
         return $user->isAdmin() || $user->id === $model->id;
     }
 
@@ -106,7 +99,6 @@ class UserPolicy
      */
     public function toggleStatus(User $user, User $model): bool
     {
-        // No permitir cambiar el propio estado
         if ($user->id === $model->id) {
             return false;
         }
@@ -119,7 +111,6 @@ class UserPolicy
      */
     public function viewOrders(User $user, User $model): bool
     {
-        // Admin puede ver órdenes de cualquier usuario, usuarios solo las propias
         return $user->isAdmin() || $user->id === $model->id;
     }
 
@@ -128,7 +119,14 @@ class UserPolicy
      */
     public function viewPayments(User $user, User $model): bool
     {
-        // Información de pagos solo visible para admin y el propio usuario
         return $user->isAdmin() || $user->id === $model->id;
+    }
+
+    /**
+     * Determine whether the user can manage institutional accounts.
+     */
+    public function manageInstitutional(User $user): bool
+    {
+        return $user->isAdmin();
     }
 }

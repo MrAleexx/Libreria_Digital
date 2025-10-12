@@ -1,3 +1,4 @@
+{{-- resources/views/auth/register.blade.php --}}
 @extends('layouts.app')
 
 @section('titulo', 'Registrarse')
@@ -21,6 +22,22 @@
                 <div class="register-header">
                     <h1 class="register-title">Crear Cuenta</h1>
                     <p class="register-subtitle">Únete a nuestra comunidad de lectores</p>
+                </div>
+
+                <!-- Botón Microsoft Institucional -->
+                <div class="microsoft-auth-section mb-6">
+                    <a href="{{ route('microsoft.login') }}"
+                        class="microsoft-btn w-full flex justify-center items-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm">
+                        <svg class="w-5 h-5 mr-3" viewBox="0 0 23 23" fill="currentColor">
+                            <path d="M0 0h11v11H0V0zm12 0h11v11H12V0zM0 12h11v11H0V12zm12 0h11v11H12V12z" />
+                        </svg>
+                        Registrarse con Cuenta Institucional
+                    </a>
+                </div>
+
+                <!-- Separador -->
+                <div class="separator mb-6">
+                    <span class="separator-text">O regístrate con email</span>
                 </div>
 
                 <form id="registerForm" class="auth-form register-form" action="{{ route('register.store') }}"
@@ -90,3 +107,19 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar formulario de registro
+            if (typeof RegisterForm !== 'undefined') {
+                new RegisterForm();
+            }
+
+            // Inicializar partículas
+            if (typeof LoginParticles !== 'undefined') {
+                new LoginParticles('particles');
+            }
+        });
+    </script>
+@endpush

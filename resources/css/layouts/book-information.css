@@ -631,25 +631,6 @@
     font-size: 1.125rem;
 }
 
-/* Scroll personalizado */
-.tabs-nav::-webkit-scrollbar {
-    height: 4px;
-}
-
-.tabs-nav::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
-}
-
-.tabs-nav::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 2px;
-}
-
-.tabs-nav::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
 /* Mejoras de accesibilidad */
 @media (prefers-reduced-motion: reduce) {
 

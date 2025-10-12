@@ -1,3 +1,4 @@
+{{-- resources/views/auth/password.blade.php --}}
 @extends('layouts.app')
 
 @section('titulo', 'Iniciar Sesión')
