@@ -1,4 +1,4 @@
-<?php*/
+<?php
 // database/migrations/2024_01_20_000000_add_microsoft_fields_to_users_table.php
 
 use Illuminate\Database\Migrations\Migration;
@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
+        /* Schema::table('users', function (Blueprint $table) {
             $table->string('microsoft_id')->nullable()->unique();
             $table->string('institutional_email')->nullable()->unique();
             $table->boolean('is_active')->default(true);
@@ -20,12 +20,12 @@ return new class extends Migration
 
             // Cambiar role para incluir moderator
             $table->string('role')->default('user')->change();
-        });
+        }); */
     }
 
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
+       /*  Schema::table('users', function (Blueprint $table) {
             $table->dropColumn([
                 'microsoft_id',
                 'institutional_email',
@@ -35,7 +35,6 @@ return new class extends Migration
                 'azure_refresh_token',
                 'azure_token_expires_at'
             ]);
-        });
+        }); */
     }
 };
-/*
