@@ -23,7 +23,7 @@ git clone https://github.com/MrAleexx/eBooks-A-T.git
 Navega al directorio del proyecto:
 
 ```bash
-cd eBooks-A-T
+cd Libreria_Digital
 ```
 
 #### 3\. Instalar Dependencias
