@@ -17,7 +17,7 @@ Asegúrate de tener instalado lo siguiente:
 Abre una terminal y clona el repositorio de GitHub:
 
 ```bash
-git clone https://github.com/MrAleexx/eBooks-A-T.git
+git clone https://github.com/MrAleexx/Libreria_Digital
 ```
 
 Navega al directorio del proyecto:
