@@ -21,6 +21,8 @@ class UserDownload extends Model
     {
         return [
             'downloaded_at' => 'datetime',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
     }
 
@@ -41,9 +43,20 @@ class UserDownload extends Model
         return $query->whereDate('downloaded_at', today());
     }
 
+    // Scope para descargas recientes
+    public function scopeRecent($query, $days = 30)
+    {
+        return $query->where('downloaded_at', '>=', now()->subDays($days));
+    }
+
     // Scope para descargas de un usuario específico
     public function scopeByUser($query, $userId)
     {
         return $query->where('user_id', $userId);
+    }
+
+    public function scopeByBook($query, $bookId)
+    {
+        return $query->where('book_id', $bookId);
     }
 }

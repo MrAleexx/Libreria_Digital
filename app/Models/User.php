@@ -1,5 +1,4 @@
 <?php
-// app/Models/User.php
 
 namespace App\Models;
 
@@ -17,18 +16,20 @@ class User extends Authenticatable
         'dni',
         'phone',
         'email',
+        'institutional_email',
         'password',
         'role',
         'microsoft_id',
-        'institutional_email',
-        'is_active',
-        'last_login_at',
-        // NUEVOS CAMPOS
+        // Gestión de contraseñas temporales
         'is_temp_password',
         'temp_password_expires_at',
+        // Control de descargas
         'downloads_today',
         'last_download_reset',
+        // Gestión de usuarios
         'created_by',
+        'is_active',
+        'last_login_at',
     ];
 
     protected $hidden = [
@@ -41,12 +42,12 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => 'string',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
-            // NUEVOS CASTS
+            // Gestión de contraseñas temporales
             'is_temp_password' => 'boolean',
             'temp_password_expires_at' => 'datetime',
+            // Control de descargas
             'downloads_today' => 'integer',
             'last_download_reset' => 'date',
         ];
@@ -54,7 +55,7 @@ class User extends Authenticatable
 
     // Roles del sistema
     const ROLE_ADMIN = 'admin';
-    const ROLE_MODERATOR = 'moderator';
+    const ROLE_LIBRARIAN = 'librarian';
     const ROLE_USER = 'user';
 
     public function isAdmin(): bool
@@ -62,9 +63,9 @@ class User extends Authenticatable
         return $this->role === self::ROLE_ADMIN;
     }
 
-    public function isModerator(): bool
+    public function isLibrarian(): bool
     {
-        return $this->role === self::ROLE_MODERATOR;
+        return $this->role === self::ROLE_LIBRARIAN;
     }
 
     public function isUser(): bool
@@ -78,7 +79,13 @@ class User extends Authenticatable
         return !is_null($this->microsoft_id);
     }
 
-    // NUEVO: Verificar si la contraseña temporal está expirada
+    // Verificar si tiene permisos de staff (admin o librarian)
+    public function isStaff(): bool
+    {
+        return $this->isAdmin() || $this->isLibrarian();
+    }
+
+    // Verificar si la contraseña temporal está expirada
     public function isTempPasswordExpired(): bool
     {
         return $this->is_temp_password &&
@@ -86,14 +93,14 @@ class User extends Authenticatable
             $this->temp_password_expires_at->isPast();
     }
 
-    // NUEVO: Verificar si puede descargar (límite de 5 por día)
+    // Verificar si puede descargar (límite de 5 por día)
     public function canDownload(): bool
     {
         $this->resetDailyDownloadsIfNeeded();
         return $this->downloads_today < 5;
     }
 
-    // NUEVO: Resetear contador de descargas si es nuevo día
+    // Resetear contador de descargas si es nuevo día
     public function resetDailyDownloadsIfNeeded(): void
     {
         if (!$this->last_download_reset || $this->last_download_reset->lt(now()->startOfDay())) {
@@ -105,26 +112,50 @@ class User extends Authenticatable
         }
     }
 
-    // NUEVO: Incrementar contador de descargas
+    // Incrementar contador de descargas
     public function incrementDownloads(): void
     {
         $this->resetDailyDownloadsIfNeeded();
         $this->increment('downloads_today');
     }
 
-    // NUEVO: Relación con el admin que creó el usuario
+    // Relación con el admin que creó el usuario
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    // NUEVO: Relación con las descargas
+    // Relación con las descargas digitales
     public function downloads()
     {
         return $this->hasMany(UserDownload::class);
     }
 
-    // NUEVO: Scope para usuarios con contraseñas temporales
+    // Relación con reservas de libros físicos
+    public function bookReservations()
+    {
+        return $this->hasMany(BookReservation::class);
+    }
+
+    // Relación con préstamos de libros físicos
+    public function bookLoans()
+    {
+        return $this->hasMany(BookLoan::class);
+    }
+
+    // Obtener préstamos activos
+    public function activeLoans()
+    {
+        return $this->bookLoans()->where('status', 'active');
+    }
+
+    // 🔥Obtener reservas pendientes
+    public function pendingReservations()
+    {
+        return $this->bookReservations()->where('status', 'pending');
+    }
+
+    // Scope para usuarios con contraseñas temporales
     public function scopeWithTempPassword($query)
     {
         return $query->where('is_temp_password', true)
@@ -140,6 +171,22 @@ class User extends Authenticatable
         return $query->where('is_active', true);
     }
 
+    // Verificar si tiene préstamos atrasados
+    public function hasOverdueLoans(): bool
+    {
+        return $this->bookLoans()
+            ->where('status', 'active')
+            ->where('due_date', '<', now())
+            ->exists();
+    }
+
+    // Obtener número de préstamos activos
+    public function getActiveLoansCountAttribute(): int
+    {
+        return $this->activeLoans()->count();
+    }
+
+    // Métodos existentes para compatibilidad
     public function orders()
     {
         return $this->hasMany(Order::class);

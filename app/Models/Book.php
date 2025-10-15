@@ -1,9 +1,10 @@
 <?php
-// app/Models/Book.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,90 +14,177 @@ class Book extends Model
     use HasFactory;
 
     protected $fillable = [
-        // Información Básica
+        // 📖 INFORMACIÓN BÁSICA ESENCIAL
         'title',
-        'description',
-
-        // Identificadores
         'isbn',
-        'isbn13',
-        'deposito_legal',
-
-        // Información Editorial
-        'publisher',
-        'publisher_address',
-        'publisher_email',
-        'publisher_city',
-
-        // Detalles Técnicos
-        'language',
+        'publisher_id',
+        'language_code',
+        'publication_year',
         'pages',
-        'publication',
-        'edition',
-        'file_format',
-        'file_size',
 
-        // Información de Lectura
-        'reading_age',
-        'publication_url',
-
-        // Archivos
-        'image',
+        // 📁 ARCHIVOS Y MULTIMEDIA
+        'cover_image',
         'pdf_file',
 
-        // Estados
-        'is_new',
-        'active',
+        // 🔐 CONTROL DE ACCESO Y TIPO
+        'book_type',
+        'access_level',
+        'copyright_status',
+        'license_type',
+        'is_active',
         'downloadable',
 
-        // ✅ NUEVO: Campos de Biblioteca
+        // ⭐ DESTACADOS Y ESTADÍSTICAS
+        'featured',
+        'is_featured_new',
         'total_downloads',
         'total_views',
-        'featured',
-        'access_level',
 
-        'published_at'
+        // 📊 ESTADÍSTICAS FÍSICAS
+        'total_physical_copies',
+        'available_physical_copies',
+        'total_loans',
     ];
 
     protected $casts = [
-        'publication' => 'date',
-        'published_at' => 'datetime',
+        'publication_year' => 'integer',
         'pages' => 'integer',
-        'is_new' => 'boolean',
-        'active' => 'boolean',
+        'is_active' => 'boolean',
         'downloadable' => 'boolean',
-
-        // ✅ NUEVO: Casts para biblioteca
+        'featured' => 'boolean',
+        'is_featured_new' => 'boolean',
         'total_downloads' => 'integer',
         'total_views' => 'integer',
-        'featured' => 'boolean',
+        'total_physical_copies' => 'integer',
+        'available_physical_copies' => 'integer',
+        'total_loans' => 'integer',
     ];
 
-    // Relación con contribuidores
+    // 🔥 NUEVAS RELACIONES NORMALIZADAS
+
+    // Relación con editorial
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(Publisher::class);
+    }
+
+    // Relación con idioma
+    public function language(): BelongsTo
+    {
+        return $this->belongsTo(Language::class, 'language_code', 'code');
+    }
+
+    // Relación con detalles opcionales
+    public function details(): HasOne
+    {
+        return $this->hasOne(BookDetail::class);
+    }
+
+    // 🔥 NUEVO: Relación con ejemplares físicos
+    public function physicalCopies(): HasMany
+    {
+        return $this->hasMany(PhysicalCopy::class);
+    }
+
+    // 🔥 NUEVO: Relación con reservas
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(BookReservation::class);
+    }
+
+    // 🔥 NUEVO: Relación con préstamos
+    public function loans(): HasMany
+    {
+        return $this->hasManyThrough(BookLoan::class, PhysicalCopy::class);
+    }
+
+    // Relaciones existentes (mantener para compatibilidad)
     public function contributors(): HasMany
     {
         return $this->hasMany(BookContributor::class);
     }
 
-    // Relación con contenido/índice
     public function contents(): HasMany
     {
         return $this->hasMany(BookContent::class);
     }
 
-    // Relación con categorías
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class, 'book_category');
     }
 
-    // Relación con descargas de usuarios
-    public function downloads()
+    public function downloads(): HasMany
     {
         return $this->hasMany(UserDownload::class);
     }
 
-    // Obtener todos los autores
+    // ACCESORES PARA DATOS OPCIONALES
+
+    public function getDescriptionAttribute(): ?string
+    {
+        return $this->details?->description;
+    }
+
+    public function getEditionAttribute(): ?string
+    {
+        return $this->details?->edition;
+    }
+
+    public function getFileFormatAttribute(): ?string
+    {
+        return $this->details?->file_format;
+    }
+
+    public function getFileSizeAttribute(): ?string
+    {
+        return $this->details?->file_size;
+    }
+
+    public function getReadingAgeAttribute(): ?string
+    {
+        return $this->details?->reading_age;
+    }
+
+    public function getDepositoLegalAttribute(): ?string
+    {
+        return $this->details?->deposito_legal;
+    }
+
+    // MÉTODOS PARA GESTIÓN FÍSICA
+
+    public function isAvailableForLoan(): bool
+    {
+        return $this->available_physical_copies > 0;
+    }
+
+    public function getAvailableCopiesCount(): int
+    {
+        return $this->physicalCopies()->where('status', 'available')->count();
+    }
+
+    public function getReservedCopiesCount(): int
+    {
+        return $this->physicalCopies()->where('status', 'reserved')->count();
+    }
+
+    public function getLoanedCopiesCount(): int
+    {
+        return $this->physicalCopies()->where('status', 'loaned')->count();
+    }
+
+    // MÉTODOS PARA ACTUALIZAR CONTADORES FÍSICOS
+    public function updatePhysicalCounters(): void
+    {
+        $this->update([
+            'total_physical_copies' => $this->physicalCopies()->count(),
+            'available_physical_copies' => $this->physicalCopies()->where('status', 'available')->count(),
+            'total_loans' => $this->loans()->count(),
+        ]);
+    }
+
+    // MÉTODOS EXISTENTES (actualizados)
+
     public function getAllAuthorsAttribute(): string
     {
         $authors = $this->contributors()
@@ -107,7 +195,6 @@ class Book extends Model
         return $authors->isNotEmpty() ? $authors->implode(', ') : 'Sin autor';
     }
 
-    // Obtener autor principal
     public function getMainAuthorAttribute(): ?string
     {
         $mainAuthor = $this->contributors()
@@ -118,7 +205,6 @@ class Book extends Model
         return $mainAuthor ? $mainAuthor->full_name : 'Sin autor';
     }
 
-    // Obtener editores
     public function getEditorsAttribute(): string
     {
         $editors = $this->contributors()
@@ -129,7 +215,6 @@ class Book extends Model
         return $editors->isNotEmpty() ? $editors->implode(', ') : '';
     }
 
-    // Método para agregar autores fácilmente
     public function addAuthor(string $name, int $sequence = 1): BookContributor
     {
         return $this->contributors()->create([
@@ -139,7 +224,6 @@ class Book extends Model
         ]);
     }
 
-    // Método para obtener contribuidores por tipo
     public function getContributorsByType(string $type)
     {
         return $this->contributors()
@@ -148,19 +232,17 @@ class Book extends Model
             ->get();
     }
 
-    // ✅ NUEVO: Incrementar contador de vistas
+    // Métodos para estadísticas de uso
     public function incrementViews(): void
     {
         $this->increment('total_views');
     }
 
-    // ✅ NUEVO: Incrementar contador de descargas
     public function incrementDownloads(): void
     {
         $this->increment('total_downloads');
     }
 
-    // ✅ NUEVO: Verificar si es accesible para un usuario
     public function isAccessibleForUser($user = null): bool
     {
         if ($this->access_level === 'free') {
@@ -171,113 +253,148 @@ class Book extends Model
             return true;
         }
 
-        if ($this->access_level === 'institutional' && $user && $user->hasInstitutionalAccess()) {
+        if ($this->access_level === 'institutional' && $user && $user->isInstitutional()) {
             return true;
         }
 
         return false;
     }
 
-    // Scope para libros activos
+    // SCOPES
+
     public function scopeActive($query)
     {
-        return $query->where('active', true);
+        return $query->where('is_active', true);
     }
 
-    // Scope para libros descargables
     public function scopeDownloadable($query)
     {
         return $query->where('downloadable', true);
     }
 
-    // ✅ NUEVO: Scope para libros destacados
     public function scopeFeatured($query)
     {
         return $query->where('featured', true);
     }
 
-    // ✅ NUEVO: Scope por nivel de acceso
     public function scopeByAccessLevel($query, $level)
     {
         return $query->where('access_level', $level);
     }
 
-    // ✅ NUEVO: Scope para libros más descargados
     public function scopeMostDownloaded($query, $limit = 10)
     {
         return $query->orderBy('total_downloads', 'desc')->take($limit);
     }
 
-    // ✅ NUEVO: Scope para libros más vistos
     public function scopeMostViewed($query, $limit = 10)
     {
         return $query->orderBy('total_views', 'desc')->take($limit);
     }
 
-    // ✅ NUEVO: Scope para libros nuevos
     public function scopeNewArrivals($query, $limit = 10)
     {
-        return $query->where('is_new', true)
+        return $query->where('is_featured_new', true)
             ->orderBy('created_at', 'desc')
             ->take($limit);
     }
 
-    // Scope para buscar por categoría
+    // Scopes para tipos de libros
+    public function scopeDigital($query)
+    {
+        return $query->where('book_type', 'digital')->orWhere('book_type', 'both');
+    }
+
+    public function scopePhysical($query)
+    {
+        return $query->where('book_type', 'physical')->orWhere('book_type', 'both');
+    }
+
+    public function scopeByBookType($query, $type)
+    {
+        return $query->where('book_type', $type);
+    }
+
+    // Scopes existentes
     public function scopeByCategory($query, $categorySlug)
     {
         return $query->whereHas('categories', function ($query) use ($categorySlug) {
-            $query->where('slug', $categorySlug)->active();
+            $query->where('slug', $categorySlug)->where('is_active', true);
         });
     }
 
-    // Obtener categorías principales del libro
     public function getMainCategoriesAttribute()
     {
         return $this->categories()->whereNull('parent_id')->get();
     }
 
-    // Método para sincronizar categorías
     public function syncCategories(array $categoryIds)
     {
         return $this->categories()->sync($categoryIds);
     }
 
-    // Método para agregar una categoría
     public function addCategory($categoryId)
     {
         return $this->categories()->attach($categoryId);
     }
 
-    // Método para remover una categoría
     public function removeCategory($categoryId)
     {
         return $this->categories()->detach($categoryId);
     }
 
-    // Obtener todas las categorías incluyendo subcategorías
     public function getAllCategoriesAttribute()
     {
         return $this->categories()->with('parent')->get();
     }
 
-    // Verificar si pertenece a una categoría específica
     public function belongsToCategory($categorySlug): bool
     {
         return $this->categories()
             ->where('slug', $categorySlug)
-            ->active()
+            ->where('is_active', true)
             ->exists();
     }
 
-    // ✅ NUEVO: Obtener estadísticas de uso
     public function getUsageStatsAttribute(): array
     {
         return [
             'total_views' => $this->total_views,
             'total_downloads' => $this->total_downloads,
+            'total_loans' => $this->total_loans,
             'download_ratio' => $this->total_views > 0
                 ? round(($this->total_downloads / $this->total_views) * 100, 2)
                 : 0,
+            'availability_ratio' => $this->total_physical_copies > 0
+                ? round(($this->available_physical_copies / $this->total_physical_copies) * 100, 2)
+                : 0,
+        ];
+    }
+
+    // Método para obtener información completa del libro
+    public function getFullInfoAttribute(): array
+    {
+        return [
+            'basic' => [
+                'title' => $this->title,
+                'isbn' => $this->isbn,
+                'publisher' => $this->publisher?->name,
+                'language' => $this->language?->native_name,
+                'publication_year' => $this->publication_year,
+                'pages' => $this->pages,
+            ],
+            'access' => [
+                'book_type' => $this->book_type,
+                'access_level' => $this->access_level,
+                'copyright_status' => $this->copyright_status,
+                'is_active' => $this->is_active,
+            ],
+            'stats' => $this->usage_stats,
+            'physical' => [
+                'total_copies' => $this->total_physical_copies,
+                'available_copies' => $this->available_physical_copies,
+                'is_available' => $this->isAvailableForLoan(),
+            ]
         ];
     }
 }
