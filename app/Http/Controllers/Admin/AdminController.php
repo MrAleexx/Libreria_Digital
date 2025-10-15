@@ -7,11 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Book;
 use App\Models\Order;
 use App\Models\User;
-use App\Models\Claims;
-use App\Models\Contacts;
 use App\Models\UserDownload;
 use App\Models\Category;
-use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {

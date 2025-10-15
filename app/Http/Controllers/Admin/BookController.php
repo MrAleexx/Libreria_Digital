@@ -6,6 +6,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Book;
 use App\Models\Category;
+use App\Models\Publisher;
+use App\Models\Language;
+use App\Models\BookDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -13,14 +16,19 @@ class BookController extends Controller
 {
     public function index()
     {
-        $books = Book::with('categories')->latest()->paginate(10);
+        // Cargar relaciones normalizadas
+        $books = Book::with(['categories', 'publisher', 'language'])->latest()->paginate(10);
         return view('admin.books.index', compact('books'));
     }
 
     public function create()
     {
+        // Obtener datos de relaciones
         $categories = Category::active()->orderBy('sort_order')->get();
-        return view('admin.books.create', compact('categories'));
+        $publishers = Publisher::active()->get();
+        $languages = Language::active()->get();
+
+        return view('admin.books.create', compact('categories', 'publishers', 'languages'));
     }
 
     public function store(Request $request)
@@ -30,17 +38,20 @@ class BookController extends Controller
         // Procesar archivos
         $validated = $this->processFiles($request, $validated);
 
-        // Procesar checkboxes (simplificado para biblioteca)
+        // Procesar checkboxes
         $validated = $this->processCheckboxes($request, $validated);
 
         try {
-            // Crear libro
+            // Crear libro con estructura normalizada
             $book = Book::create($validated);
 
             // Procesar categorías
             if ($request->has('categories')) {
                 $book->categories()->sync($request->input('categories'));
             }
+
+            // Crear detalles opcionales
+            $this->createBookDetails($book, $request);
 
             // Procesar contribuidores
             $this->processContributors($book, $request->input('contributors', []));
@@ -54,9 +65,16 @@ class BookController extends Controller
 
     public function show(Book $book)
     {
-        $book->load('categories', 'contributors');
+        // Cargar todas las relaciones normalizadas
+        $book->load([
+            'categories',
+            'contributors',
+            'publisher',
+            'language',
+            'details'
+        ]);
 
-        // ✅ NUEVO: Incrementar vistas al mostrar el libro
+        // Incrementar vistas al mostrar el libro
         $book->incrementViews();
 
         return view('admin.books.show', compact('book'));
@@ -64,10 +82,15 @@ class BookController extends Controller
 
     public function edit(Book $book)
     {
+        // Obtener datos de relaciones
         $categories = Category::active()->orderBy('sort_order')->get();
-        $book->load('categories', 'contributors');
+        $publishers = Publisher::active()->get();
+        $languages = Language::active()->get();
 
-        return view('admin.books.edit', compact('book', 'categories'));
+        // Cargar relaciones normalizadas
+        $book->load(['categories', 'contributors', 'details']);
+
+        return view('admin.books.edit', compact('book', 'categories', 'publishers', 'languages'));
     }
 
     public function update(Request $request, Book $book)
@@ -77,7 +100,7 @@ class BookController extends Controller
         // Procesar archivos (con eliminación de anteriores)
         $validated = $this->processFiles($request, $validated, $book);
 
-        // Procesar checkboxes (simplificado para biblioteca)
+        // Procesar checkboxes
         $validated = $this->processCheckboxes($request, $validated);
 
         try {
@@ -91,6 +114,9 @@ class BookController extends Controller
                 $book->categories()->detach();
             }
 
+            // Actualizar detalles opcionales
+            $this->updateBookDetails($book, $request);
+
             return redirect()->route('admin.books.index')
                 ->with('success', 'Libro actualizado exitosamente.');
         } catch (\Exception $e) {
@@ -100,17 +126,16 @@ class BookController extends Controller
 
     public function destroy(Book $book)
     {
-        // Eliminar relaciones primero
+        // Eliminar todas las relaciones normalizadas
         $book->contributors()->delete();
         $book->categories()->detach();
         $book->contents()->delete();
-
-        // ✅ NUEVO: Eliminar descargas relacionadas
+        $book->details()->delete();
         $book->downloads()->delete();
 
-        // Eliminar archivos
-        if ($book->image) {
-            Storage::disk('public')->delete($book->image);
+        // Eliminar archivos con nombres correctos
+        if ($book->cover_image) {
+            Storage::disk('public')->delete($book->cover_image);
         }
 
         if ($book->pdf_file) {
@@ -124,7 +149,7 @@ class BookController extends Controller
     }
 
     /**
-     * ✅ ACTUALIZADO: Validación de datos del libro para biblioteca
+     * Validación para estructura normalizada
      */
     private function validateBookData(Request $request, Book $book = null): array
     {
@@ -133,49 +158,43 @@ class BookController extends Controller
             : 'required|string|unique:books,isbn';
 
         return $request->validate([
-            // Información Básica
+            // INFORMACIÓN BÁSICA ESENCIAL
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'categories' => 'nullable|array',
-            'categories.*' => 'exists:categories,id',
-
-            // Identificadores
             'isbn' => $isbnRule,
-            'isbn13' => 'nullable|string|max:20',
-            'deposito_legal' => 'nullable|string|max:50',
-
-            // Información Editorial
-            'publisher' => 'required|string|max:255',
-            'publisher_address' => 'nullable|string|max:500',
-            'publisher_email' => 'nullable|email|max:100',
-            'publisher_city' => 'nullable|string|max:100',
-
-            // Detalles Técnicos
-            'language' => 'required|string|max:50',
+            'publisher_id' => 'required|exists:publishers,id',
+            'language_code' => 'required|exists:languages,code',
+            'publication_year' => 'required|integer|min:1900|max:' . date('Y'),
             'pages' => 'required|integer|min:1',
-            'publication' => 'required|date',
-            'edition' => 'required|string|max:100',
-            'file_format' => 'required|string|max:50',
-            'file_size' => 'nullable|string|max:50',
 
-            // Información de Lectura
-            'reading_age' => 'nullable|string|max:50',
-            'publication_url' => 'nullable|url|max:500',
+            // CONTROL DE ACCESO Y TIPO
+            'book_type' => 'required|in:digital,physical,both',
+            'access_level' => 'required|in:free,premium,institutional',
+            'copyright_status' => 'required|in:copyrighted,public_domain,creative_commons',
+            'license_type' => 'nullable|string|max:100',
 
-            // Archivos
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // DESTACADOS Y ESTADOS
+            'is_active' => 'boolean',
+            'downloadable' => 'boolean',
+            'featured' => 'boolean',
+            'is_featured_new' => 'boolean',
+
+            // ARCHIVOS
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'pdf_file' => 'nullable|file|mimes:pdf|max:10240',
 
-            // Estados (simplificados)
-            'is_new' => 'boolean',
-            'active' => 'boolean',
-            'downloadable' => 'boolean',
+            // DATOS OPCIONALES (para book_details)
+            'description' => 'nullable|string',
+            'edition' => 'nullable|string|max:100',
+            'file_format' => 'nullable|string|max:10',
+            'file_size' => 'nullable|string|max:50',
+            'reading_age' => 'nullable|string|max:50',
+            'deposito_legal' => 'nullable|string|max:50',
+            'restrictions' => 'nullable|string',
+            'notes' => 'nullable|string',
 
-            // ✅ NUEVO: Campos de Biblioteca
-            'featured' => 'boolean',
-            'access_level' => 'required|in:free,premium,institutional',
-
-            'published_at' => 'nullable|date',
+            // CATEGORÍAS
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:categories,id',
         ]);
     }
 
@@ -184,13 +203,13 @@ class BookController extends Controller
      */
     private function processFiles(Request $request, array $validated, Book $book = null): array
     {
-        // Procesar imagen
-        if ($request->hasFile('image')) {
+        // Procesar imagen (cover_image en lugar de image)
+        if ($request->hasFile('cover_image')) {
             // Si estamos actualizando y existe imagen anterior, eliminarla
-            if ($book && $book->image) {
-                Storage::disk('public')->delete($book->image);
+            if ($book && $book->cover_image) {
+                Storage::disk('public')->delete($book->cover_image);
             }
-            $validated['image'] = $request->file('image')->store('books', 'public');
+            $validated['cover_image'] = $request->file('cover_image')->store('books', 'public');
         }
 
         // Procesar PDF
@@ -206,23 +225,20 @@ class BookController extends Controller
     }
 
     /**
-     * ✅ ACTUALIZADO: Procesar checkboxes (simplificado para biblioteca)
+     * Procesar checkboxes
      */
     private function processCheckboxes(Request $request, array $validated): array
     {
-        // Solo checkboxes necesarios para biblioteca
-        $validated['is_new'] = $request->boolean('is_new');
-        $validated['active'] = $request->boolean('active');
-        $validated['downloadable'] = $request->boolean('downloadable');
-        $validated['featured'] = $request->boolean('featured');
-
-        // ❌ ELIMINADOS: pre_order, is_free
+        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['downloadable'] = $request->boolean('downloadable', true);
+        $validated['featured'] = $request->boolean('featured', false);
+        $validated['is_featured_new'] = $request->boolean('is_featured_new', false);
 
         return $validated;
     }
 
     /**
-     * Procesar contribuidores
+     * Procesar contribuidores (igual que antes)
      */
     private function processContributors(Book $book, array $contributors): void
     {
@@ -244,25 +260,72 @@ class BookController extends Controller
     }
 
     /**
-     * ✅ NUEVO: Método para manejar descargas
+     * Crear detalles opcionales del libro
+     */
+    private function createBookDetails(Book $book, Request $request): void
+    {
+        BookDetail::create([
+            'book_id' => $book->id,
+            'description' => $request->input('description'),
+            'edition' => $request->input('edition'),
+            'file_format' => $request->input('file_format'),
+            'file_size' => $request->input('file_size'),
+            'reading_age' => $request->input('reading_age'),
+            'deposito_legal' => $request->input('deposito_legal'),
+            'restrictions' => $request->input('restrictions'),
+            'notes' => $request->input('notes'),
+        ]);
+    }
+
+    /**
+     * Actualizar detalles opcionales del libro
+     */
+    private function updateBookDetails(Book $book, Request $request): void
+    {
+        if ($book->details) {
+            $book->details->update([
+                'description' => $request->input('description'),
+                'edition' => $request->input('edition'),
+                'file_format' => $request->input('file_format'),
+                'file_size' => $request->input('file_size'),
+                'reading_age' => $request->input('reading_age'),
+                'deposito_legal' => $request->input('deposito_legal'),
+                'restrictions' => $request->input('restrictions'),
+                'notes' => $request->input('notes'),
+            ]);
+        } else {
+            $this->createBookDetails($book, $request);
+        }
+    }
+
+    /**
+     * Método para manejar descargas
      */
     public function download(Book $book)
     {
         // Verificar si el libro es descargable
-        if (!$book->downloadable) {
+        if (!$book->downloadable || !$book->is_active) {
             return back()->with('error', 'Este libro no está disponible para descarga.');
         }
 
-        // Verificar acceso del usuario (implementar según tu lógica de usuarios)
-        // if (!$book->isAccessibleForUser(auth()->user())) {
-        //     return back()->with('error', 'No tienes acceso para descargar este libro.');
-        // }
+        // Verificar acceso del usuario
+        if (!$book->isAccessibleForUser(auth()->user())) {
+            return back()->with('error', 'No tienes acceso para descargar este libro.');
+        }
 
-        // Incrementar contador de descargas
+        // Verificar límite de descargas del usuario
+        if (auth()->check() && !auth()->user()->canDownload()) {
+            return back()->with('error', 'Has alcanzado tu límite de descargas por hoy (máximo 5).');
+        }
+
+        // Incrementar contador de descargas del libro
         $book->incrementDownloads();
 
-        // Registrar descarga en UserDownload (si existe el modelo)
-        if (class_exists('App\Models\UserDownload') && auth()->check()) {
+        // Incrementar contador de descargas del usuario
+        if (auth()->check()) {
+            auth()->user()->incrementDownloads();
+
+            // Registrar descarga en UserDownload
             \App\Models\UserDownload::create([
                 'user_id' => auth()->id(),
                 'book_id' => $book->id,
@@ -273,9 +336,42 @@ class BookController extends Controller
 
         // Descargar archivo
         if ($book->pdf_file && Storage::disk('public')->exists($book->pdf_file)) {
-            return Storage::disk('public')->download($book->pdf_file, $book->slug . '.pdf');
+            $filename = \Str::slug($book->title) . '.pdf';
+            return Storage::disk('public')->download($book->pdf_file, $filename);
         }
 
         return back()->with('error', 'El archivo PDF no está disponible.');
+    }
+
+    /**
+     * Cambiar tipo de libro
+     */
+    public function updateBookType(Book $book, Request $request)
+    {
+        $request->validate([
+            'book_type' => 'required|in:digital,physical,both',
+        ]);
+
+        $book->update(['book_type' => $request->book_type]);
+
+        return back()->with('success', 'Tipo de libro actualizado exitosamente.');
+    }
+
+    /**
+     * Cambiar estado de copyright
+     */
+    public function updateCopyrightStatus(Book $book, Request $request)
+    {
+        $request->validate([
+            'copyright_status' => 'required|in:copyrighted,public_domain,creative_commons',
+            'license_type' => 'nullable|string|max:100',
+        ]);
+
+        $book->update([
+            'copyright_status' => $request->copyright_status,
+            'license_type' => $request->license_type,
+        ]);
+
+        return back()->with('success', 'Estado de copyright actualizado exitosamente.');
     }
 }
