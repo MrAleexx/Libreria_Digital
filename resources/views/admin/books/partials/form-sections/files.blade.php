@@ -11,18 +11,19 @@
             <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                 <i class="fas fa-image text-gray-400 mr-2 text-xs"></i>
                 {{ $book ? 'Imagen Actual' : 'Imagen de Portada *' }}
+            </label>
 
-
-            @if ($book && $book->image)
+            @if ($book && $book->cover_image)
                 <div class="mb-3">
-                    <x-book-image :image="$book->image" :title="$book->title" class="w-32 h-44 object-cover rounded-lg border" />
+                    {{-- ACTUALIZADO: Usar cover_image en lugar de image --}}
+                    <x-book-image :image="$book->cover_image" :title="$book->title" class="w-32 h-44 object-cover rounded-lg border" />
                 </div>
             @endif
 
-            <input type="file" id="image" name="image" {{ $book ? '' : 'required' }}
+            <input type="file" id="cover_image" name="cover_image" {{ $book ? '' : 'required' }}
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 accept="image/*">
-            @error('image')
+            @error('cover_image')
                 <p class="text-red-500 text-sm mt-1 flex items-center">
                     <i class="fas fa-exclamation-circle mr-1"></i>
                     {{ $message }}
@@ -35,13 +36,14 @@
             <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                 <i class="fas fa-file-pdf text-gray-400 mr-2 text-xs"></i>
                 {{ $book ? 'Archivo PDF Actual' : 'Archivo PDF *' }}
-
+            </label>
 
             @if ($book && $book->pdf_file)
                 <div class="flex items-center mb-3 p-3 bg-gray-50 rounded-lg">
                     <i class="fas fa-file-pdf text-red-500 text-2xl mr-3"></i>
                     <div>
                         <p class="text-sm font-medium text-gray-900">PDF Disponible</p>
+                        {{-- ACTUALIZADO: file_size ahora viene de book_details --}}
                         @if ($book->file_size)
                             <p class="text-xs text-gray-500">{{ $book->file_size }}</p>
                         @endif

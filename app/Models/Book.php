@@ -1,4 +1,5 @@
 <?php
+// app/Models/Book.php
 
 namespace App\Models;
 
@@ -27,7 +28,7 @@ class Book extends Model
         'cover_image',
         'pdf_file',
 
-        // 🔐 CONTROL DE ACCESO Y TIPO
+        // CONTROL DE ACCESO Y TIPO
         'book_type',
         'access_level',
         'copyright_status',
@@ -35,9 +36,8 @@ class Book extends Model
         'is_active',
         'downloadable',
 
-        // DESTACADOS Y ESTADÍSTICAS
+        // DESTACADOS Y ESTADÍSTICAS (SOLO featured)
         'featured',
-        'is_featured_new',
         'total_downloads',
         'total_views',
 
@@ -52,8 +52,7 @@ class Book extends Model
         'pages' => 'integer',
         'is_active' => 'boolean',
         'downloadable' => 'boolean',
-        'featured' => 'boolean',
-        'is_featured_new' => 'boolean',
+        'featured' => 'boolean', // Solo featured, no is_featured_new
         'total_downloads' => 'integer',
         'total_views' => 'integer',
         'total_physical_copies' => 'integer',
@@ -293,7 +292,7 @@ class Book extends Model
 
     public function scopeNewArrivals($query, $limit = 10)
     {
-        return $query->where('is_featured_new', true)
+        return $query->where('featured', true) // Usar featured en lugar de is_featured_new
             ->orderBy('created_at', 'desc')
             ->take($limit);
     }

@@ -52,32 +52,21 @@
                 </p>
             @enderror
         </div>
-        </select>
-        <p class="text-xs text-gray-500 mt-1 flex items-center">
-            <i class="fas fa-info-circle mr-1"></i>
-            Mantén presionado Ctrl (Cmd en Mac) para seleccionar múltiples categorías
-        </p>
-        @error('categories')
+    </div>
+
+    {{-- DESCRIPCIÓN MOVIDA AQUÍ - Ahora viene de book_details --}}
+    <div class="mt-4">
+        <label for="description" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+            <i class="fas fa-align-left text-gray-400 mr-2 text-xs"></i>
+            Descripción
+        </label>
+        <textarea id="description" name="description" rows="4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">{{ old('description', $book->description ?? '') }}</textarea>
+        @error('description')
             <p class="text-red-500 text-sm mt-1 flex items-center">
                 <i class="fas fa-exclamation-circle mr-1"></i>
                 {{ $message }}
             </p>
         @enderror
     </div>
-</div>
-
-<div class="mt-4">
-    <label for="description" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-        <i class="fas fa-align-left text-gray-400 mr-2 text-xs"></i>
-        Descripción *
-    </label>
-    <textarea id="description" name="description" rows="4" required
-        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">{{ old('description', $book->description ?? '') }}</textarea>
-    @error('description')
-        <p class="text-red-500 text-sm mt-1 flex items-center">
-            <i class="fas fa-exclamation-circle mr-1"></i>
-            {{ $message }}
-        </p>
-    @enderror
-</div>
 </div>

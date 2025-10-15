@@ -89,8 +89,9 @@
                             <label for="role" class="block text-sm font-medium text-gray-700 mb-2">Rol *</label>
                             <select id="role" name="role" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                                <option value="user" {{ old('role') == 'user' ? 'selected' : '' }}>Usuario</option>
-                                <option value="moderator" {{ old('role') == 'moderator' ? 'selected' : '' }}>Moderador
+                                <option value="user" {{ old('role') == 'user' ? 'selected' : '' }}>Usuario Normal
+                                </option>
+                                <option value="librarian" {{ old('role') == 'librarian' ? 'selected' : '' }}>Bibliotecario
                                 </option>
                                 <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Administrador
                                 </option>
@@ -142,3 +143,131 @@
         </div>
     </div>
 @endsection
+
+@push('modals')
+    @if (session('show_password_modal') && session('temp_password'))
+        <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            style="display: flex;">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-green-600">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Usuario Creado Exitosamente
+                    </h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <h4 class="font-semibold text-yellow-800 mb-2 flex items-center">
+                        <i class="fas fa-key mr-2"></i>
+                        Contraseña Temporal Generada
+                    </h4>
+                    <div class="flex items-center justify-between">
+                        <code class="text-lg font-mono bg-yellow-100 px-3 py-2 rounded border flex-1 mr-2 text-center">
+                            {{ session('temp_password') }}
+                        </code>
+                        <button onclick="copyPassword()"
+                            class="bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 transition-colors flex items-center">
+                            <i class="fas fa-copy mr-1"></i>
+                            Copiar
+                        </button>
+                    </div>
+                    <p class="text-sm text-yellow-700 mt-2">
+                        ⚠️ <strong>Guarda esta contraseña ahora</strong>, no podrás verla nuevamente.
+                    </p>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-blue-700">
+                        <strong>Información para el usuario:</strong><br>
+                        • Email: {{ session('user_email') }}<br>
+                        • Contraseña temporal: La mostrada arriba<br>
+                        • Expira en: 7 días<br>
+                        • Debe cambiar la contraseña en el primer acceso
+                    </p>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button onclick="closeModal()"
+                        class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition-colors">
+                        Cerrar
+                    </button>
+                    <button onclick="copyAndClose()"
+                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors flex items-center">
+                        <i class="fas fa-copy mr-2"></i>
+                        Copiar y Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function closeModal() {
+                document.getElementById('passwordModal').style.display = 'none';
+                // Limpiar la sesión para que no reaparezca en recarga
+                fetch('{{ route('admin.users.clear-temp-password') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
+
+            function copyPassword() {
+                const password = '{{ session('temp_password') }}';
+                navigator.clipboard.writeText(password).then(() => {
+                    // Mostrar feedback visual
+                    const btn = event.target;
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copiada';
+                    btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                    btn.classList.add('bg-green-500', 'hover:bg-green-600');
+
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                        btn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Error al copiar: ', err);
+                    // Fallback para navegadores antiguos
+                    const tempInput = document.createElement('input');
+                    tempInput.value = password;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+
+                    const btn = event.target;
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Copiada';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                    }, 2000);
+                });
+            }
+
+            function copyAndClose() {
+                copyPassword();
+                setTimeout(closeModal, 1000);
+            }
+
+            // Cerrar modal con ESC
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeModal();
+                }
+            });
+
+            // Cerrar modal haciendo click fuera
+            document.getElementById('passwordModal').addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeModal();
+                }
+            });
+        </script>
+    @endif
+@endpush

@@ -9,21 +9,22 @@ use App\Models\Category;
 use App\Models\Publisher;
 use App\Models\Language;
 use App\Models\BookDetail;
+use App\Models\BookContributor;
+use App\Models\UserDownload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\JsonResponse;
 
 class BookController extends Controller
 {
     public function index()
     {
-        // Cargar relaciones normalizadas
         $books = Book::with(['categories', 'publisher', 'language'])->latest()->paginate(10);
         return view('admin.books.index', compact('books'));
     }
 
     public function create()
     {
-        // Obtener datos de relaciones
         $categories = Category::active()->orderBy('sort_order')->get();
         $publishers = Publisher::active()->get();
         $languages = Language::active()->get();
@@ -34,26 +35,17 @@ class BookController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateBookData($request);
-
-        // Procesar archivos
         $validated = $this->processFiles($request, $validated);
-
-        // Procesar checkboxes
         $validated = $this->processCheckboxes($request, $validated);
 
         try {
-            // Crear libro con estructura normalizada
             $book = Book::create($validated);
 
-            // Procesar categorías
             if ($request->has('categories')) {
                 $book->categories()->sync($request->input('categories'));
             }
 
-            // Crear detalles opcionales
             $this->createBookDetails($book, $request);
-
-            // Procesar contribuidores
             $this->processContributors($book, $request->input('contributors', []));
 
             return redirect()->route('admin.books.index')
@@ -65,16 +57,15 @@ class BookController extends Controller
 
     public function show(Book $book)
     {
-        // Cargar todas las relaciones normalizadas
         $book->load([
             'categories',
             'contributors',
             'publisher',
             'language',
-            'details'
+            'details',
+            'physicalCopies'
         ]);
 
-        // Incrementar vistas al mostrar el libro
         $book->incrementViews();
 
         return view('admin.books.show', compact('book'));
@@ -82,12 +73,10 @@ class BookController extends Controller
 
     public function edit(Book $book)
     {
-        // Obtener datos de relaciones
         $categories = Category::active()->orderBy('sort_order')->get();
         $publishers = Publisher::active()->get();
         $languages = Language::active()->get();
 
-        // Cargar relaciones normalizadas
         $book->load(['categories', 'contributors', 'details']);
 
         return view('admin.books.edit', compact('book', 'categories', 'publishers', 'languages'));
@@ -96,25 +85,18 @@ class BookController extends Controller
     public function update(Request $request, Book $book)
     {
         $validated = $this->validateBookData($request, $book);
-
-        // Procesar archivos (con eliminación de anteriores)
         $validated = $this->processFiles($request, $validated, $book);
-
-        // Procesar checkboxes
         $validated = $this->processCheckboxes($request, $validated);
 
         try {
-            // Actualizar libro
             $book->update($validated);
 
-            // Sincronizar categorías
             if ($request->has('categories')) {
                 $book->categories()->sync($request->input('categories'));
             } else {
                 $book->categories()->detach();
             }
 
-            // Actualizar detalles opcionales
             $this->updateBookDetails($book, $request);
 
             return redirect()->route('admin.books.index')
@@ -126,14 +108,23 @@ class BookController extends Controller
 
     public function destroy(Book $book)
     {
-        // Eliminar todas las relaciones normalizadas
+        // Verificar si hay préstamos o reservas activas antes de eliminar
+        if ($book->loans()->where('status', 'active')->exists()) {
+            return back()->with('error', 'No se puede eliminar el libro porque tiene préstamos activos.');
+        }
+
+        if ($book->reservations()->whereIn('status', ['pending', 'ready_for_pickup'])->exists()) {
+            return back()->with('error', 'No se puede eliminar el libro porque tiene reservas activas.');
+        }
+
         $book->contributors()->delete();
         $book->categories()->detach();
         $book->contents()->delete();
         $book->details()->delete();
         $book->downloads()->delete();
+        $book->physicalCopies()->delete();
+        $book->reservations()->delete();
 
-        // Eliminar archivos con nombres correctos
         if ($book->cover_image) {
             Storage::disk('public')->delete($book->cover_image);
         }
@@ -149,7 +140,7 @@ class BookController extends Controller
     }
 
     /**
-     * Validación para estructura normalizada
+     * Validación actualizada sin is_featured_new
      */
     private function validateBookData(Request $request, Book $book = null): array
     {
@@ -172,11 +163,10 @@ class BookController extends Controller
             'copyright_status' => 'required|in:copyrighted,public_domain,creative_commons',
             'license_type' => 'nullable|string|max:100',
 
-            // DESTACADOS Y ESTADOS
+            // DESTACADOS Y ESTADOS (SOLO featured, NO is_featured_new)
             'is_active' => 'boolean',
             'downloadable' => 'boolean',
             'featured' => 'boolean',
-            'is_featured_new' => 'boolean',
 
             // ARCHIVOS
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -195,6 +185,14 @@ class BookController extends Controller
             // CATEGORÍAS
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
+
+            // CONTRIBUIDORES
+            'contributors' => 'nullable|array',
+            'contributors.*.full_name' => 'required|string|max:200',
+            'contributors.*.contributor_type' => 'required|in:author,editor,translator,illustrator',
+            'contributors.*.email' => 'nullable|email|max:100',
+            'contributors.*.sequence_number' => 'nullable|integer|min:1',
+            'contributors.*.biographical_note' => 'nullable|string',
         ]);
     }
 
@@ -203,18 +201,14 @@ class BookController extends Controller
      */
     private function processFiles(Request $request, array $validated, Book $book = null): array
     {
-        // Procesar imagen (cover_image en lugar de image)
         if ($request->hasFile('cover_image')) {
-            // Si estamos actualizando y existe imagen anterior, eliminarla
             if ($book && $book->cover_image) {
                 Storage::disk('public')->delete($book->cover_image);
             }
             $validated['cover_image'] = $request->file('cover_image')->store('books', 'public');
         }
 
-        // Procesar PDF
         if ($request->hasFile('pdf_file')) {
-            // Si estamos actualizando y existe PDF anterior, eliminarlo
             if ($book && $book->pdf_file) {
                 Storage::disk('public')->delete($book->pdf_file);
             }
@@ -225,34 +219,31 @@ class BookController extends Controller
     }
 
     /**
-     * Procesar checkboxes
+     * Procesar checkboxes 
      */
     private function processCheckboxes(Request $request, array $validated): array
     {
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['downloadable'] = $request->boolean('downloadable', true);
         $validated['featured'] = $request->boolean('featured', false);
-        $validated['is_featured_new'] = $request->boolean('is_featured_new', false);
 
         return $validated;
     }
 
     /**
-     * Procesar contribuidores (igual que antes)
+     * Procesar contribuidores
      */
     private function processContributors(Book $book, array $contributors): void
     {
-        // Eliminar contribuidores existentes
         $book->contributors()->delete();
 
-        // Agregar nuevos contribuidores
-        foreach ($contributors as $contributorData) {
+        foreach ($contributors as $index => $contributorData) {
             if (!empty($contributorData['full_name'])) {
                 $book->contributors()->create([
                     'contributor_type' => $contributorData['contributor_type'] ?? 'author',
                     'full_name' => $contributorData['full_name'],
                     'email' => $contributorData['email'] ?? null,
-                    'sequence_number' => $contributorData['sequence_number'] ?? 1,
+                    'sequence_number' => $contributorData['sequence_number'] ?? ($index + 1),
                     'biographical_note' => $contributorData['biographical_note'] ?? null,
                 ]);
             }
@@ -267,8 +258,8 @@ class BookController extends Controller
         BookDetail::create([
             'book_id' => $book->id,
             'description' => $request->input('description'),
-            'edition' => $request->input('edition'),
-            'file_format' => $request->input('file_format'),
+            'edition' => $request->input('edition', '1ra'),
+            'file_format' => $request->input('file_format', 'PDF'),
             'file_size' => $request->input('file_size'),
             'reading_age' => $request->input('reading_age'),
             'deposito_legal' => $request->input('deposito_legal'),
@@ -285,8 +276,8 @@ class BookController extends Controller
         if ($book->details) {
             $book->details->update([
                 'description' => $request->input('description'),
-                'edition' => $request->input('edition'),
-                'file_format' => $request->input('file_format'),
+                'edition' => $request->input('edition', '1ra'),
+                'file_format' => $request->input('file_format', 'PDF'),
                 'file_size' => $request->input('file_size'),
                 'reading_age' => $request->input('reading_age'),
                 'deposito_legal' => $request->input('deposito_legal'),
@@ -303,30 +294,24 @@ class BookController extends Controller
      */
     public function download(Book $book)
     {
-        // Verificar si el libro es descargable
         if (!$book->downloadable || !$book->is_active) {
             return back()->with('error', 'Este libro no está disponible para descarga.');
         }
 
-        // Verificar acceso del usuario
         if (!$book->isAccessibleForUser(auth()->user())) {
             return back()->with('error', 'No tienes acceso para descargar este libro.');
         }
 
-        // Verificar límite de descargas del usuario
         if (auth()->check() && !auth()->user()->canDownload()) {
             return back()->with('error', 'Has alcanzado tu límite de descargas por hoy (máximo 5).');
         }
 
-        // Incrementar contador de descargas del libro
         $book->incrementDownloads();
 
-        // Incrementar contador de descargas del usuario
         if (auth()->check()) {
             auth()->user()->incrementDownloads();
 
-            // Registrar descarga en UserDownload
-            \App\Models\UserDownload::create([
+            UserDownload::create([
                 'user_id' => auth()->id(),
                 'book_id' => $book->id,
                 'downloaded_at' => now(),
@@ -334,7 +319,6 @@ class BookController extends Controller
             ]);
         }
 
-        // Descargar archivo
         if ($book->pdf_file && Storage::disk('public')->exists($book->pdf_file)) {
             $filename = \Str::slug($book->title) . '.pdf';
             return Storage::disk('public')->download($book->pdf_file, $filename);
@@ -373,5 +357,64 @@ class BookController extends Controller
         ]);
 
         return back()->with('success', 'Estado de copyright actualizado exitosamente.');
+    }
+
+    /**
+     * Toggle para featured
+     */
+    public function toggleFeatured(Book $book)
+    {
+        $book->update(['featured' => !$book->featured]);
+
+        $status = $book->featured ? 'destacado' : 'quitado de destacados';
+        return back()->with('success', "Libro {$status} exitosamente.");
+    }
+
+    /**
+     * Toggle para activo/inactivo
+     */
+    public function toggleActive(Book $book)
+    {
+        $book->update(['is_active' => !$book->is_active]);
+
+        $status = $book->is_active ? 'activado' : 'desactivado';
+        return back()->with('success', "Libro {$status} exitosamente.");
+    }
+
+    /**
+     * Creación rápida de editorial desde el formulario de libros
+     */
+    public function quickCreatePublisher(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255|unique:publishers',
+                'city' => 'nullable|string|max:255',
+                'country' => 'required|string|max:255|in:Perú,Argentina,México,España,Colombia,Chile',
+            ]);
+
+            $publisher = Publisher::create($validated);
+
+            return response()->json([
+                'success' => true,
+                'publisher' => [
+                    'id' => $publisher->id,
+                    'name' => $publisher->name,
+                    'city' => $publisher->city
+                ],
+                'message' => 'Editorial creada exitosamente'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear la editorial: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

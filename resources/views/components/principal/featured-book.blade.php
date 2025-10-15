@@ -1,3 +1,4 @@
+{{-- resources/views/components/principal/featured-book.blade.php --}}
 <section class="py-20 bg-white">
     <div class="container mx-auto px-6">
         <div class="text-center mb-16">

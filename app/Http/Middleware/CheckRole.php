@@ -23,14 +23,19 @@ class CheckRole
                     abort(403, 'No tienes permisos de administrador.');
                 }
                 break;
-            case 'moderator':
-                if (!$user->isModerator() && !$user->isAdmin()) {
-                    abort(403, 'No tienes permisos de moderador.');
+            case 'librarian':
+                if (!$user->isLibrarian() && !$user->isAdmin()) {
+                    abort(403, 'No tienes permisos de bibliotecario.');
                 }
                 break;
             case 'user':
                 if (!$user->isUser()) {
                     abort(403, 'Acceso no autorizado.');
+                }
+                break;
+            case 'staff':
+                if (!$user->isStaff()) {
+                    abort(403, 'No tienes permisos de staff.');
                 }
                 break;
         }

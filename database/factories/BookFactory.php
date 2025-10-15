@@ -1,18 +1,24 @@
 <?php
+// database/factories/BookFactory.php
 
 namespace Database\Factories;
 
+use App\Models\Language;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class BookFactory extends Factory
 {
     public function definition(): array
     {
+        // Obtener un código de lenguaje existente
+        $existingLanguage = Language::inRandomOrder()->first() ??
+            Language::factory()->create(['code' => 'es']);
+
         return [
             'title' => fake()->sentence(3),
             'isbn' => fake()->isbn13(),
             'publisher_id' => \App\Models\Publisher::factory(),
-            'language_code' => 'es',
+            'language_code' => $existingLanguage->code, // Usar lenguaje existente
             'publication_year' => fake()->year(),
             'pages' => fake()->numberBetween(100, 500),
             'cover_image' => 'books/default-cover.jpg',
@@ -24,7 +30,6 @@ class BookFactory extends Factory
             'is_active' => true,
             'downloadable' => true,
             'featured' => false,
-            'is_featured_new' => false,
             'total_downloads' => 0,
             'total_views' => 0,
             'total_physical_copies' => 0,
@@ -37,6 +42,8 @@ class BookFactory extends Factory
     {
         return $this->state(fn(array $attributes) => [
             'book_type' => 'digital',
+            'total_physical_copies' => 0,
+            'available_physical_copies' => 0,
         ]);
     }
 
@@ -46,6 +53,7 @@ class BookFactory extends Factory
             'book_type' => 'physical',
             'total_physical_copies' => 5,
             'available_physical_copies' => 3,
+            'pdf_file' => null, // Los libros físicos pueden no tener PDF
         ]);
     }
 
@@ -76,6 +84,50 @@ class BookFactory extends Factory
     {
         return $this->state(fn(array $attributes) => [
             'access_level' => 'premium',
+        ]);
+    }
+
+    public function institutional()
+    {
+        return $this->state(fn(array $attributes) => [
+            'access_level' => 'institutional',
+        ]);
+    }
+
+    public function publicDomain()
+    {
+        return $this->state(fn(array $attributes) => [
+            'copyright_status' => 'public_domain',
+            'license_type' => null,
+        ]);
+    }
+
+    public function creativeCommons()
+    {
+        return $this->state(fn(array $attributes) => [
+            'copyright_status' => 'creative_commons',
+            'license_type' => 'CC BY-NC-SA 4.0',
+        ]);
+    }
+
+    public function withDownloads($count = 10)
+    {
+        return $this->state(fn(array $attributes) => [
+            'total_downloads' => $count,
+        ]);
+    }
+
+    public function withViews($count = 50)
+    {
+        return $this->state(fn(array $attributes) => [
+            'total_views' => $count,
+        ]);
+    }
+
+    public function notDownloadable()
+    {
+        return $this->state(fn(array $attributes) => [
+            'downloadable' => false,
         ]);
     }
 }

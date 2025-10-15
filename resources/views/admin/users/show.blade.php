@@ -78,7 +78,7 @@
                                                 </td>
                                                 <td class="px-4 py-2">
                                                     <span
-                                                        class="px-2 py-1 text-xs rounded-full 
+                                                        class="px-2 py-1 text-xs rounded-full
                                                         {{ $order->status === 'paid'
                                                             ? 'bg-green-100 text-green-800'
                                                             : ($order->status === 'pending'

@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\BookCategoryController;
+use App\Http\Controllers\Admin\books\PublisherController;
 
 // RUTAS PUBLICAS
 Route::get('/', HomeController::class)->name('bookmart');
@@ -87,8 +88,6 @@ Route::middleware('auth')->prefix('bookmart')->group(function () {
     Route::get('/carrito/checkout/cuenta-bancaria', [CartController::class, 'bank'])->name('cart.bank');
     Route::get('/carrito/checkout/correo', [CartController::class, 'correo'])->name('cart.correo');
     Route::post('/carrito/checkout/correo-enviar', [CartController::class, 'enviarCorreo'])->name('cart.enviarCorreo');
-
-
     Route::post('/carrito/procesar-pedido', [CartController::class, 'processCheckout'])->name('cart.process');
 
     // RUTAS ORDENES - PEDIDOS
@@ -105,28 +104,49 @@ Route::middleware('auth')->prefix('bookmart')->group(function () {
     Route::post('/cerrar-sesion', [LogoutController::class, 'store'])->name('logout.store');
 });
 
-// PANEL DE ADMINISTRACIÓN
-Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(function () {
+// PANEL DE ADMINISTRACIÓN - CORREGIR MIDDLEWARE
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkRole:admin,librarian'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
-    // Gestión de libros
-    Route::resource('books', AdminBookController::class);
-
-    // Gestión de usuarios
+    // GESTIÓN DE USUARIOS - RUTAS COMPLETAS
     Route::resource('users', AdminUserController::class);
 
+    // Rutas adicionales para usuarios
     Route::get('users/{user}/download-history', [AdminUserController::class, 'downloadHistory'])
         ->name('users.download-history');
 
+    Route::get('users/{user}/loan-history', [AdminUserController::class, 'loanHistory'])
+        ->name('users.loan-history');
+
     Route::patch('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])
         ->name('users.toggle-status');
+
+    Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])
+        ->name('users.reset-password');
 
     Route::get('users/import/form', [AdminUserController::class, 'showImportForm'])
         ->name('users.import.form');
 
     Route::post('users/import', [AdminUserController::class, 'import'])
         ->name('users.import');
+
+    // RUTAS CRÍTICAS PARA MODALES
+    Route::post('/users/clear-temp-password', [AdminUserController::class, 'clearTempPassword'])
+        ->name('users.clear-temp-password');
+
+    Route::get('/users/import/download-report', [AdminUserController::class, 'downloadImportReport'])
+        ->name('users.import.download-report');
+
+    Route::post('/users/clear-import-session', [AdminUserController::class, 'clearImportSession'])
+        ->name('users.clear-import-session');
+
+    // Gestión de libros
+    Route::resource('books', AdminBookController::class);
+
+    // Creación rápida de editorial - CORREGIDA
+    Route::post('/publishers/quick-create', [BookController::class, 'quickCreatePublisher'])
+        ->name('publishers.quick-create');
 
     // Gestión de órdenes
     Route::resource('orders', AdminOrderController::class);
@@ -156,7 +176,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     Route::get('contacts', [AdminController::class, 'contacts'])->name('contacts');
 
-
     // Gestión de categorías
     Route::resource('categories', CategoryController::class);
     Route::post('categories/{category}/toggle-status', [CategoryController::class, 'toggleStatus'])
@@ -171,6 +190,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     })->name('index');
+
+    // Rutas solo para admin
+    Route::middleware('checkRole:admin')->group(function () {
+        Route::get('/system-settings', [AdminController::class, 'systemSettings'])->name('system-settings');
+    });
 });
 
 // En routes/web.php (temporalmente)
@@ -188,7 +212,6 @@ Route::get('/debug-storage', function () {
         echo "Symlink target: " . readlink(public_path('storage')) . "<br>";
     }
 });
-
 
 Route::get('/clear', function () {
     try {

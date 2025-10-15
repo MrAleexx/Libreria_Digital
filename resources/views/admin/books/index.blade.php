@@ -121,7 +121,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex flex-col space-y-1">
-                                            @if ($book->active)
+                                            @if ($book->is_active)
                                                 <span
                                                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                     <i class="fas fa-check-circle mr-1 text-xs"></i>
@@ -135,11 +135,12 @@
                                                 </span>
                                             @endif
 
-                                            @if ($book->is_new)
+                                            {{-- ELIMINADO: is_new - usar featured --}}
+                                            @if ($book->featured)
                                                 <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                                                     <i class="fas fa-star mr-1 text-xs"></i>
-                                                    Nuevo
+                                                    Destacado
                                                 </span>
                                             @endif
                                         </div>

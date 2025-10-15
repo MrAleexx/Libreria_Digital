@@ -7,12 +7,12 @@ use App\Models\User;
 use App\Models\UserDownload;
 use App\Models\BookLoan;
 use App\Models\BookReservation;
-use App\Services\UserService;
 use App\Http\Requests\Admin\users\StoreUserRequest;
 use App\Http\Requests\Admin\users\UpdateUserRequest;
 use App\Http\Requests\Admin\users\ImportUsersRequest;
 use Illuminate\Http\Request;
 use App\Imports\UsersImport;
+use App\Services\Admin\UserService;
 use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
@@ -217,6 +217,7 @@ class UserController extends Controller
         $user->update(['is_active' => !$user->is_active]);
 
         $status = $user->is_active ? 'activada' : 'desactivada';
+
         return back()->with('success', "Cuenta {$status} exitosamente.");
     }
 

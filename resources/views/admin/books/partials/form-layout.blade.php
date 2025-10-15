@@ -18,7 +18,10 @@
         <!-- Detalles Técnicos -->
         @include('admin.books.partials.form-sections.technical-details')
 
-        <!-- ✅ NUEVO: Configuración de Biblioteca -->
+        <!-- Detalles Opcionales -->
+        @include('admin.books.partials.form-sections.optional-details')
+
+        <!-- Configuración de Biblioteca -->
         @include('admin.books.partials.form-sections.library-info')
 
         <!-- Estados -->

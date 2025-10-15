@@ -92,9 +92,9 @@
                             <select id="role" name="role" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                                 <option value="user" {{ old('role', $user->role) == 'user' ? 'selected' : '' }}>Usuario
-                                </option>
-                                <option value="moderator" {{ old('role', $user->role) == 'moderator' ? 'selected' : '' }}>
-                                    Moderador</option>
+                                    Normal</option>
+                                <option value="librarian" {{ old('role', $user->role) == 'librarian' ? 'selected' : '' }}>
+                                    Bibliotecario</option>
                                 <option value="admin" {{ old('role', $user->role) == 'admin' ? 'selected' : '' }}>
                                     Administrador</option>
                             </select>

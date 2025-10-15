@@ -5,26 +5,24 @@
         Detalles Técnicos
     </h3>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Idioma -->
         <div>
-            <label for="language" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+            <label for="language_code" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                 <i class="fas fa-language text-gray-400 mr-2 text-xs"></i>
                 Idioma *
             </label>
-            <select id="language" name="language" required
+            <select id="language_code" name="language_code" required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="">Seleccionar</option>
-                <option value="es" {{ old('language', $book->language ?? '') == 'es' ? 'selected' : '' }}>Español
-                </option>
-                <option value="en" {{ old('language', $book->language ?? '') == 'en' ? 'selected' : '' }}>English
-                </option>
-                <option value="fr" {{ old('language', $book->language ?? '') == 'fr' ? 'selected' : '' }}>Français
-                </option>
-                <option value="pt" {{ old('language', $book->language ?? '') == 'pt' ? 'selected' : '' }}>Português
-                </option>
+                @foreach ($languages as $language)
+                    <option value="{{ $language->code }}"
+                        {{ old('language_code', $book->language_code ?? '') == $language->code ? 'selected' : '' }}>
+                        {{ $language->native_name }} ({{ $language->name }})
+                    </option>
+                @endforeach
             </select>
-            @error('language')
+            @error('language_code')
                 <p class="text-red-500 text-sm mt-1 flex items-center">
                     <i class="fas fa-exclamation-circle mr-1"></i>
                     {{ $message }}
@@ -49,34 +47,17 @@
             @enderror
         </div>
 
-        <!-- Tamaño Archivo -->
+        <!-- Año de Publicación -->
         <div>
-            <label for="file_size" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                <i class="fas fa-weight text-gray-400 mr-2 text-xs"></i>
-                Tamaño Archivo
+            <label for="publication_year" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <i class="fas fa-calendar text-gray-400 mr-2 text-xs"></i>
+                Año Publicación *
             </label>
-            <input type="text" id="file_size" name="file_size"
+            <input type="number" id="publication_year" name="publication_year" min="1900" max="{{ date('Y') }}"
+                required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                value="{{ old('file_size', $book->file_size ?? '') }}" placeholder="2.8 MB">
-        </div>
-
-        <!-- Formato -->
-        <div>
-            <label for="file_format" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                <i class="fas fa-format text-gray-400 mr-2 text-xs"></i>
-                Formato *
-            </label>
-            <select id="file_format" name="file_format" required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                <option value="">Seleccionar</option>
-                <option value="PDF" {{ old('file_format', $book->file_format ?? '') == 'PDF' ? 'selected' : '' }}>PDF
-                </option>
-                <option value="EPUB" {{ old('file_format', $book->file_format ?? '') == 'EPUB' ? 'selected' : '' }}>
-                    EPUB</option>
-                <option value="MOBI" {{ old('file_format', $book->file_format ?? '') == 'MOBI' ? 'selected' : '' }}>
-                    MOBI</option>
-            </select>
-            @error('file_format')
+                value="{{ old('publication_year', $book->publication_year ?? '') }}" placeholder="{{ date('Y') }}">
+            @error('publication_year')
                 <p class="text-red-500 text-sm mt-1 flex items-center">
                     <i class="fas fa-exclamation-circle mr-1"></i>
                     {{ $message }}
@@ -85,50 +66,14 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <!-- Fecha Publicación -->
-        <div>
-            <label for="publication" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                <i class="fas fa-calendar-alt text-gray-400 mr-2 text-xs"></i>
-                Fecha Publicación *
-            </label>
-            <input type="date" id="publication" name="publication" required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                value="{{ old('publication', $book ? $book->publication->format('Y-m-d') : '') }}">
-            @error('publication')
-                <p class="text-red-500 text-sm mt-1 flex items-center">
-                    <i class="fas fa-exclamation-circle mr-1"></i>
-                    {{ $message }}
-                </p>
-            @enderror
-        </div>
-
-        <!-- Edición -->
-        <div>
-            <label for="edition" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                <i class="fas fa-layer-group text-gray-400 mr-2 text-xs"></i>
-                Edición *
-            </label>
-            <input type="text" id="edition" name="edition" required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                value="{{ old('edition', $book->edition ?? '1er') }}" placeholder="1er">
-            @error('edition')
-                <p class="text-red-500 text-sm mt-1 flex items-center">
-                    <i class="fas fa-exclamation-circle mr-1"></i>
-                    {{ $message }}
-                </p>
-            @enderror
-        </div>
-
-        <!-- Publicación en Plataforma -->
-        <div>
-            <label for="published_at" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                <i class="fas fa-clock text-gray-400 mr-2 text-xs"></i>
-                Publicación en Plataforma
-            </label>
-            <input type="datetime-local" id="published_at" name="published_at"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                value="{{ old('published_at', $book && $book->published_at ? $book->published_at->format('Y-m-d\TH:i') : '') }}">
-        </div>
+    <!-- Publicación en Plataforma -->
+    <div class="mt-4">
+        <label for="published_at" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+            <i class="fas fa-clock text-gray-400 mr-2 text-xs"></i>
+            Publicación en Plataforma
+        </label>
+        <input type="datetime-local" id="published_at" name="published_at"
+            class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            value="{{ old('published_at', $book && $book->published_at ? $book->published_at->format('Y-m-d\TH:i') : '') }}">
     </div>
 </div>

@@ -10,18 +10,30 @@
             <p class="text-gray-600">{{ $user->email }}</p>
             <div class="flex items-center mt-2 space-x-2">
                 <span
-                    class="px-3 py-1 text-sm rounded-full 
+                    class="px-3 py-1 text-sm rounded-full
                     {{ $user->role === 'admin'
                         ? 'bg-purple-100 text-purple-800'
-                        : ($user->role === 'moderator'
+                        : ($user->role === 'librarian'
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-green-100 text-green-800') }}">
-                    {{ ucfirst($user->role) }}
+                    @if ($user->role === 'admin')
+                        Administrador
+                    @elseif($user->role === 'librarian')
+                        Bibliotecario
+                    @else
+                        Usuario Normal
+                    @endif
                 </span>
                 @if ($user->is_temp_password)
                     <span class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800 flex items-center">
                         <i class="fas fa-key mr-1"></i>
                         Contraseña Temporal
+                    </span>
+                @endif
+                @if (!$user->is_active)
+                    <span class="px-3 py-1 text-sm rounded-full bg-red-100 text-red-800 flex items-center">
+                        <i class="fas fa-ban mr-1"></i>
+                        Inactivo
                     </span>
                 @endif
             </div>

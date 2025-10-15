@@ -15,7 +15,7 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->isStaff();
     }
 
     /**
@@ -23,7 +23,7 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
-        return $user->isAdmin() || $user->id === $model->id;
+        return $user->isStaff() || $user->id === $model->id;
     }
 
     /**
@@ -31,7 +31,7 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->isStaff();
     }
 
     /**
@@ -39,7 +39,12 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
-        return $user->isAdmin() || $user->id === $model->id;
+        // Solo admin puede editar otros staff members
+        if ($model->isStaff() && !$user->isAdmin()) {
+            return false;
+        }
+
+        return $user->isStaff() || $user->id === $model->id;
     }
 
     /**
@@ -51,6 +56,7 @@ class UserPolicy
             return false;
         }
 
+        // Solo admin puede eliminar usuarios
         return $user->isAdmin();
     }
 
@@ -83,6 +89,7 @@ class UserPolicy
             return false;
         }
 
+        // Solo admin puede cambiar roles
         return $user->isAdmin();
     }
 
@@ -103,7 +110,7 @@ class UserPolicy
             return false;
         }
 
-        return $user->isAdmin();
+        return $user->isStaff(); // Admin o Librarian
     }
 
     /**
