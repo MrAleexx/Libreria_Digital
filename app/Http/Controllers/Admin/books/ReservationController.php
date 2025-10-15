@@ -7,12 +7,15 @@ use Illuminate\Http\Request;
 use App\Models\Book;
 use App\Models\BookReservation;
 use App\Models\User;
-
+use App\Models\PhysicalCopy;
+use App\Models\BookLoan;
+use App\Http\Requests\Admin\books\StoreReservationRequest;
 class ReservationController extends Controller
 {
     public function index()
     {
         $reservations = BookReservation::with(['user', 'book', 'physicalCopy'])
+            ->filtered()
             ->latest()
             ->paginate(20);
 
@@ -27,37 +30,25 @@ class ReservationController extends Controller
         return view('admin.reservations.create', compact('books', 'users'));
     }
 
-    public function store(Request $request)
+    public function store(StoreReservationRequest $request)
     {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'book_id' => 'required|exists:books,id',
-            'pickup_deadline' => 'required|date|after:today',
-        ]);
+        $book = Book::find($request->book_id);
 
-        // Verificar disponibilidad
-        $book = Book::find($validated['book_id']);
         if (!$book->isAvailableForLoan()) {
-            return back()->with('error', 'No hay ejemplares disponibles para este libro.');
+            return back()->with('error', 'No hay ejemplares disponibles.');
         }
 
-        // Asignar ejemplar automáticamente
         $availableCopy = $book->physicalCopies()->available()->first();
-        if (!$availableCopy) {
-            return back()->with('error', 'No hay ejemplares disponibles en este momento.');
-        }
 
-        // Crear reserva
         $reservation = BookReservation::create([
-            'user_id' => $validated['user_id'],
-            'book_id' => $validated['book_id'],
+            'user_id' => $request->user_id,
+            'book_id' => $request->book_id,
             'physical_copy_id' => $availableCopy->id,
             'reservation_date' => now(),
-            'pickup_deadline' => $validated['pickup_deadline'],
-            'status' => 'pending',
+            'pickup_deadline' => $request->pickup_deadline,
+            'status' => BookReservation::STATUS_PENDING,
         ]);
 
-        // Marcar ejemplar como reservado
         $availableCopy->markAsReserved();
 
         return redirect()->route('admin.reservations.show', $reservation)
@@ -70,36 +61,32 @@ class ReservationController extends Controller
         return view('admin.reservations.show', compact('reservation'));
     }
 
-    public function markReadyForPickup(BookReservation $reservation)
+    public function markReady(BookReservation $reservation)
     {
         if (!$reservation->isPending()) {
-            return back()->with('error', 'Solo se pueden marcar como listas las reservas pendientes.');
+            return back()->with('error', 'Solo se pueden marcar reservas pendientes.');
         }
 
         $reservation->markAsReadyForPickup();
-
-        return back()->with('success', 'Reserva marcada como lista para recoger.');
+        return back()->with('success', 'Reserva lista para recoger.');
     }
 
     public function processPickup(BookReservation $reservation)
     {
         if (!$reservation->isReadyForPickup()) {
-            return back()->with('error', 'La reserva debe estar marcada como lista para recoger.');
+            return back()->with('error', 'La reserva debe estar lista para recoger.');
         }
 
-        // Crear préstamo
+        // Crear préstamo desde reserva
         $loan = $reservation->physicalCopy->loans()->create([
             'user_id' => $reservation->user_id,
             'reservation_id' => $reservation->id,
             'loan_date' => now(),
-            'due_date' => now()->addDays(14), // 2 semanas
-            'status' => 'active',
+            'due_date' => now()->addDays(BookLoan::LOAN_DURATION_DAYS),
+            'status' => BookLoan::STATUS_ACTIVE,
         ]);
 
-        // Marcar ejemplar como prestado
         $reservation->physicalCopy->markAsLoaned();
-
-        // Marcar reserva como recogida
         $reservation->markAsPickedUp();
 
         return redirect()->route('admin.loans.show', $loan)
@@ -108,8 +95,12 @@ class ReservationController extends Controller
 
     public function cancel(BookReservation $reservation)
     {
+        if (!$reservation->canBeCancelled()) {
+            return back()->with('error', 'No se puede cancelar esta reserva.');
+        }
+
         $reservation->markAsCancelled();
-        return back()->with('success', 'Reserva cancelada exitosamente.');
+        return back()->with('success', 'Reserva cancelada.');
     }
 
     public function destroy(BookReservation $reservation)
@@ -120,6 +111,6 @@ class ReservationController extends Controller
 
         $reservation->delete();
         return redirect()->route('admin.reservations.index')
-            ->with('success', 'Reserva eliminada exitosamente.');
+            ->with('success', 'Reserva eliminada.');
     }
 }

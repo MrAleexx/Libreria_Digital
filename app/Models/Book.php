@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Book extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        // 📖 INFORMACIÓN BÁSICA ESENCIAL
+        // INFORMACIÓN BÁSICA ESENCIAL
         'title',
         'isbn',
         'publisher_id',
@@ -22,7 +23,7 @@ class Book extends Model
         'publication_year',
         'pages',
 
-        // 📁 ARCHIVOS Y MULTIMEDIA
+        // ARCHIVOS Y MULTIMEDIA
         'cover_image',
         'pdf_file',
 
@@ -34,13 +35,13 @@ class Book extends Model
         'is_active',
         'downloadable',
 
-        // ⭐ DESTACADOS Y ESTADÍSTICAS
+        // DESTACADOS Y ESTADÍSTICAS
         'featured',
         'is_featured_new',
         'total_downloads',
         'total_views',
 
-        // 📊 ESTADÍSTICAS FÍSICAS
+        // ESTADÍSTICAS FÍSICAS
         'total_physical_copies',
         'available_physical_copies',
         'total_loans',
@@ -60,8 +61,6 @@ class Book extends Model
         'total_loans' => 'integer',
     ];
 
-    // 🔥 NUEVAS RELACIONES NORMALIZADAS
-
     // Relación con editorial
     public function publisher(): BelongsTo
     {
@@ -80,20 +79,20 @@ class Book extends Model
         return $this->hasOne(BookDetail::class);
     }
 
-    // 🔥 NUEVO: Relación con ejemplares físicos
+    // Relación con ejemplares físicos
     public function physicalCopies(): HasMany
     {
         return $this->hasMany(PhysicalCopy::class);
     }
 
-    // 🔥 NUEVO: Relación con reservas
+    // Relación con reservas
     public function reservations(): HasMany
     {
         return $this->hasMany(BookReservation::class);
     }
 
-    // 🔥 NUEVO: Relación con préstamos
-    public function loans(): HasMany
+    // Relación con préstamos
+    public function loans(): HasManyThrough
     {
         return $this->hasManyThrough(BookLoan::class, PhysicalCopy::class);
     }

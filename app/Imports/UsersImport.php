@@ -17,6 +17,7 @@ class UsersImport implements ToCollection, WithHeadingRow, WithValidation
     protected $importedBy;
     protected $errors = [];
     protected $successCount = 0;
+    protected $createdUsers = []; // NUEVO: Almacenar usuarios creados con sus contraseñas
 
     public function __construct($importedBy)
     {
@@ -41,7 +42,7 @@ class UsersImport implements ToCollection, WithHeadingRow, WithValidation
 
                 if ($validator->fails()) {
                     $this->errors[] = [
-                        'row' => $index + 2, // +2 porque +1 es el header y +1 porque index empieza en 0
+                        'row' => $index + 2,
                         'errors' => $validator->errors()->all(),
                         'data' => $normalizedRow
                     ];
@@ -52,7 +53,7 @@ class UsersImport implements ToCollection, WithHeadingRow, WithValidation
                 $tempPassword = Str::random(10);
 
                 // Crear usuario
-                User::create([
+                $user = User::create([
                     'name' => $normalizedRow['nombre'],
                     'last_name' => $normalizedRow['apellido'],
                     'email' => $normalizedRow['email'],
@@ -62,10 +63,18 @@ class UsersImport implements ToCollection, WithHeadingRow, WithValidation
                     'is_temp_password' => true,
                     'temp_password_expires_at' => now()->addDays(7),
                     'created_by' => $this->importedBy,
-                    'role' => 'user', // Por defecto todos son usuarios normales
+                    'role' => 'user',
                 ]);
 
                 $this->successCount++;
+
+                // NUEVO: Guardar usuario creado con su contraseña temporal
+                $this->createdUsers[] = [
+                    'name' => $user->name . ' ' . $user->last_name,
+                    'email' => $user->email,
+                    'temp_password' => $tempPassword,
+                    'dni' => $user->dni
+                ];
 
                 // TODO: Enviar email con credenciales
                 // Mail::to($normalizedRow['email'])->send(new TempPasswordEmail($tempPassword));
@@ -155,6 +164,8 @@ class UsersImport implements ToCollection, WithHeadingRow, WithValidation
             'success_count' => $this->successCount,
             'error_count' => count($this->errors),
             'errors' => $this->errors,
+            'created_users' => $this->createdUsers, // NUEVO: Incluir usuarios creados
         ];
     }
+    
 }

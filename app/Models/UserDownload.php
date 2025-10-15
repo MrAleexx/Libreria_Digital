@@ -59,4 +59,13 @@ class UserDownload extends Model
     {
         return $query->where('book_id', $bookId);
     }
+
+    public function scopeFiltered($query)
+    {
+        return $query->when(request('filter') == 'today', function ($q) {
+            $q->whereDate('downloaded_at', today());
+        })->when(request('filter') == 'week', function ($q) {
+            $q->where('downloaded_at', '>=', now()->subDays(7));
+        });
+    }
 }

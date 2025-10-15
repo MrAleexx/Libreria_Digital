@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BookLoan extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'physical_copy_id',
@@ -201,6 +204,17 @@ class BookLoan extends Model
             if ($loan->isActive() && $loan->due_date->isPast()) {
                 $loan->status = self::STATUS_OVERDUE;
             }
+        });
+    }
+
+    public function scopeFiltered($query)
+    {
+        return $query->when(request('filter') == 'active', function ($q) {
+            $q->active();
+        })->when(request('filter') == 'overdue', function ($q) {
+            $q->overdue();
+        })->when(request('filter') == 'returned', function ($q) {
+            $q->returned();
         });
     }
 }

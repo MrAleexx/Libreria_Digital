@@ -6,24 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Book;
 use App\Models\BookLoan;
 use App\Models\User;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Admin\books\StoreLoanRequest;
 
 class LoanController extends Controller
 {
     public function index()
     {
-        $query = BookLoan::with(['user', 'physicalCopy.book']);
-
-        // Filtros
-        if (request('filter') == 'active') {
-            $query->active();
-        } elseif (request('filter') == 'overdue') {
-            $query->overdue();
-        } elseif (request('filter') == 'returned') {
-            $query->returned();
-        }
-
-        $loans = $query->latest()->paginate(20);
+        $loans = BookLoan::with(['user', 'physicalCopy.book'])
+            ->filtered()
+            ->latest()
+            ->paginate(20);
 
         return view('admin.loans.index', compact('loans'));
     }
@@ -36,32 +28,23 @@ class LoanController extends Controller
         return view('admin.loans.create', compact('books', 'users'));
     }
 
-    public function store(Request $request)
+    public function store(StoreLoanRequest $request)
     {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'book_id' => 'required|exists:books,id',
-            'due_date' => 'required|date|after:today',
-        ]);
-
-        // Buscar ejemplar disponible
-        $book = Book::find($validated['book_id']);
+        $book = Book::find($request->book_id);
         $availableCopy = $book->physicalCopies()->available()->first();
 
         if (!$availableCopy) {
             return back()->with('error', 'No hay ejemplares disponibles para este libro.');
         }
 
-        // Crear préstamo directo (sin reserva)
         $loan = BookLoan::create([
-            'user_id' => $validated['user_id'],
+            'user_id' => $request->user_id,
             'physical_copy_id' => $availableCopy->id,
             'loan_date' => now(),
-            'due_date' => $validated['due_date'],
-            'status' => 'active',
+            'due_date' => $request->due_date,
+            'status' => BookLoan::STATUS_ACTIVE,
         ]);
 
-        // Marcar ejemplar como prestado
         $availableCopy->markAsLoaned();
 
         return redirect()->route('admin.loans.show', $loan)
@@ -82,7 +65,10 @@ class LoanController extends Controller
 
         $loan->renew();
 
-        return back()->with('success', 'Préstamo renovado exitosamente. Nueva fecha de devolución: ' . $loan->due_date->format('d/m/Y'));
+        return back()->with(
+            'success',
+            "Préstamo renovado. Nueva fecha: {$loan->due_date->format('d/m/Y')}"
+        );
     }
 
     public function return(BookLoan $loan)
@@ -93,18 +79,7 @@ class LoanController extends Controller
 
         $loan->markAsReturned();
 
-        return back()->with('success', 'Libro marcado como devuelto exitosamente.');
-    }
-
-    public function extend(BookLoan $loan, Request $request)
-    {
-        $request->validate([
-            'new_due_date' => 'required|date|after:' . $loan->due_date->format('Y-m-d'),
-        ]);
-
-        $loan->update(['due_date' => $request->new_due_date]);
-
-        return back()->with('success', 'Fecha de devolución extendida exitosamente.');
+        return back()->with('success', 'Libro marcado como devuelto.');
     }
 
     public function reportOverdue(BookLoan $loan)
@@ -114,10 +89,19 @@ class LoanController extends Controller
         }
 
         $loan->markAsOverdue();
+        // TODO: Enviar notificación
 
-        // TODO: Enviar notificación al usuario
-        // Mail::to($loan->user->email)->send(new OverdueNoticeMail($loan));
+        return back()->with('success', 'Préstamo marcado como atrasado.');
+    }
 
-        return back()->with('success', 'Préstamo marcado como atrasado y notificación enviada.');
+    public function destroy(BookLoan $loan)
+    {
+        if ($loan->isActive()) {
+            return back()->with('error', 'No se puede eliminar un préstamo activo.');
+        }
+
+        $loan->delete();
+        return redirect()->route('admin.loans.index')
+            ->with('success', 'Préstamo eliminado.');
     }
 }
