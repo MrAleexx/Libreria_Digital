@@ -1,0 +1,62 @@
+/* resources/css/components/books.css */
+/* Estilos para el módulo de libros */
+
+/* Drag and drop file upload */
+.file-upload-area {
+    transition: all 0.3s ease;
+}
+
+.file-upload-area.dragover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* Badge styles */
+.badge-digital {
+    @apply bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded;
+}
+
+.badge-physical {
+    @apply bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded;
+}
+
+.badge-both {
+    @apply bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded;
+}
+
+/* Tab navigation */
+.tab-active {
+    @apply border-blue-500 text-blue-600;
+}
+
+.tab-inactive {
+    @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300;
+}
+
+/* Book card hover effects */
+.book-card {
+    transition: all 0.2s ease-in-out;
+}
+
+.book-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Statistics cards */
+.stat-card {
+    @apply bg-white p-6 rounded-lg border border-gray-200 transition-all duration-200;
+}
+
+.stat-card:hover {
+    @apply border-blue-200 shadow-md;
+}
+
+/* Form sections */
+.form-section {
+    @apply bg-white p-6 rounded-lg border border-gray-200 mb-6;
+}
+
+.form-section-title {
+    @apply text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200;
+}

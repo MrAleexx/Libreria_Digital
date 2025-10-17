@@ -29,7 +29,10 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\BookCategoryController;
-use App\Http\Controllers\Admin\books\PublisherController;
+use App\Http\Controllers\Admin\books\LoanController;
+use App\Http\Controllers\Admin\books\ReservationController;
+use App\Http\Controllers\Admin\books\PhysicalCopyController;
+use App\Http\Controllers\Admin\books\LibraryController;
 
 // RUTAS PUBLICAS
 Route::get('/', HomeController::class)->name('bookmart');
@@ -104,7 +107,7 @@ Route::middleware('auth')->prefix('bookmart')->group(function () {
     Route::post('/cerrar-sesion', [LogoutController::class, 'store'])->name('logout.store');
 });
 
-// PANEL DE ADMINISTRACIÓN - CORREGIR MIDDLEWARE
+// PANEL DE ADMINISTRACIÓN
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkRole:admin,librarian'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
@@ -141,12 +144,46 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'checkRole:admin,lib
     Route::post('/users/clear-import-session', [AdminUserController::class, 'clearImportSession'])
         ->name('users.clear-import-session');
 
-    // Gestión de libros
-    Route::resource('books', AdminBookController::class);
+    // MÓDULO PRINCIPAL DE LIBROS
+    Route::resource('books', BookController::class);
 
-    // Creación rápida de editorial - CORREGIDA
-    Route::post('/publishers/quick-create', [BookController::class, 'quickCreatePublisher'])
-        ->name('publishers.quick-create');
+    // SUBSISTEMA FÍSICO
+    Route::prefix('library')->group(function () {
+        Route::get('dashboard', [LibraryController::class, 'dashboard']);
+        Route::get('quick-actions', [LibraryController::class, 'quickActions']);
+        Route::post('quick-loan', [LibraryController::class, 'processQuickLoan']);
+        Route::post('quick-return', [LibraryController::class, 'processQuickReturn']);
+    });
+
+    Route::resource('loans', LoanController::class);
+    Route::resource('reservations', ReservationController::class);
+    Route::resource('physical-copies', PhysicalCopyController::class);
+
+    // ACCIONES ESPECÍFICAS - CORREGIR ESTA SECCIÓN
+    Route::post('books/{book}/toggle-featured', [BookController::class, 'toggleFeatured'])
+        ->name('books.toggle-featured');
+
+    Route::post('books/{book}/toggle-active', [BookController::class, 'toggleActive'])
+        ->name('books.toggle-active');
+
+    Route::post('books/{book}/update-book-type', [BookController::class, 'updateBookType'])
+        ->name('books.update-book-type');
+
+    Route::post('books/{book}/update-copyright', [BookController::class, 'updateCopyrightStatus'])
+        ->name('books.update-copyright');
+
+    Route::post('books/quick-create-publisher', [BookController::class, 'quickCreatePublisher'])
+        ->name('books.quick-create-publisher');
+
+    Route::get('/admin/books/{book}/physical-stats', [BookController::class, 'getPhysicalStats'])
+        ->name('admin.books.physical-stats');
+
+    // // Gestión de libros
+    // Route::resource('books', AdminBookController::class);
+
+    // // Creación rápida de editorial - CORREGIDA
+    // Route::post('/publishers/quick-create', [BookController::class, 'quickCreatePublisher'])
+    //     ->name('publishers.quick-create');
 
     // Gestión de órdenes
     Route::resource('orders', AdminOrderController::class);

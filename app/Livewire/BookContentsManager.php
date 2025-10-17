@@ -8,6 +8,7 @@ use App\Models\BookContent;
 
 class BookContentsManager extends Component
 {
+    public $bookId;
     public $book;
     public $contents = [];
     public $showForm = false;
@@ -22,7 +23,7 @@ class BookContentsManager extends Component
         'chapter_number' => null,
         'description' => '',
         'sort_order' => 0,
-        'level' => 0 // 0 = Tema principal, 1 = Subtema, 2 = Sub-subtema, etc.
+        'level' => 0
     ];
 
     protected $rules = [
@@ -34,10 +35,11 @@ class BookContentsManager extends Component
         'importText' => 'nullable|string|min:10'
     ];
 
-    public function mount($book = null)
+    public function mount($bookId = null)
     {
-        if ($book) {
-            $this->book = $book;
+        if ($bookId) {
+            $this->bookId = $bookId;
+            $this->book = Book::with('contents')->find($bookId);
             $this->loadContents();
         } else {
             // Para creación, inicializar array vacío
@@ -47,7 +49,7 @@ class BookContentsManager extends Component
 
     public function loadContents()
     {
-        if ($this->book && $this->book->exists) {
+        if ($this->book) {
             $this->contents = $this->book->contents()
                 ->orderBy('sort_order')
                 ->get()

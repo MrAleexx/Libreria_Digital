@@ -48,12 +48,9 @@
         </div>
     </div>
 
-    {{-- Chart.js --}}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     @stack('scripts')
     @livewireScripts
-    <script src="//unpkg.com/alpinejs" defer></script>
 </body>
 
 </html>

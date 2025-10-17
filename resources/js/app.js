@@ -8,6 +8,7 @@ import { ContributorsManager } from './components/book-form/ContributorsManager'
 import { InitialContentsManager } from './components/book-form/InitialContentsManager';
 import './layouts/book-information';
 import './admin/categories-form';
+import './admin/books';
 import Chart from 'chart.js/auto';
 
 console.log('🚀 App.js iniciado - Módulos cargados');

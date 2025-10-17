@@ -117,7 +117,7 @@
                         {{ $editingIndex === null ? 'Agregar' : 'Actualizar' }}
                     </button>
                 </div>
-            </form>
+            </from>
         </div>
     @endif
 

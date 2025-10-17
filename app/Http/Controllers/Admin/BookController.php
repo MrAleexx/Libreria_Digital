@@ -24,8 +24,38 @@ class BookController extends Controller
 {
     public function index()
     {
-        $books = Book::with(['categories', 'publisher', 'language'])->latest()->paginate(10);
-        return view('admin.books.index', compact('books'));
+        // Obtener categorías para los filtros
+        $categories = Category::active()->orderBy('sort_order')->get();
+
+        // Construir la consulta con filtros
+        $query = Book::with(['categories', 'publisher', 'language']);
+
+        // Aplicar filtros si existen
+        if (request('search')) {
+            $search = request('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('isbn', 'like', "%{$search}%");
+            });
+        }
+
+        if (request('book_type')) {
+            $query->where('book_type', request('book_type'));
+        }
+
+        if (request('is_active') !== null && request('is_active') !== '') {
+            $query->where('is_active', request('is_active'));
+        }
+
+        if (request('category')) {
+            $query->whereHas('categories', function ($q) {
+                $q->where('categories.id', request('category'));
+            });
+        }
+
+        $books = $query->latest()->paginate(10);
+
+        return view('admin.books.index', compact('books', 'categories'));
     }
 
     public function create()
@@ -49,11 +79,25 @@ class BookController extends Controller
     public function store(Request $request)
     {
         try {
+            \Log::info('=== INICIANDO CREACIÓN DE LIBRO ===');
+            \Log::info('Datos recibidos:', $request->all());
+
+            // Validar datos básicos
             $validated = $this->validateBookData($request);
+
+            \Log::info('Datos validados correctamente');
+
+            // Procesar archivos (AHORA SÍ FUNCIONARÁ)
             $validated = $this->processFiles($request, $validated);
+
+            // Verificar que la portada esté presente
+            if (empty($validated['cover_image'])) {
+                throw new \Exception('La portada del libro es obligatoria.');
+            }
+
             $validated = $this->processCheckboxes($request, $validated);
 
-            \Log::info('Intentando crear libro...');
+            \Log::info('Datos finales para crear libro:', $validated);
 
             // Crear el libro básico
             $book = Book::create($validated);
@@ -67,8 +111,8 @@ class BookController extends Controller
             // Crear detalles del libro
             $this->createBookDetails($book, $request);
 
-            return redirect()->route('admin.books.edit', $book)
-                ->with('success', 'Libro creado exitosamente. Ahora puedes agregar contribuidores e índice.');
+            return redirect()->route('admin.books.index')
+                ->with('success', 'Libro creado exitosamente.');
         } catch (\Exception $e) {
             \Log::error('Error al crear libro: ' . $e->getMessage());
             return back()->with('error', 'Error al crear el libro: ' . $e->getMessage())
@@ -106,27 +150,93 @@ class BookController extends Controller
     public function update(Request $request, Book $book)
     {
         try {
-            $validated = $this->validateBookData($request, $book);
-            $validated = $this->processFiles($request, $validated, $book);
-            $validated = $this->processCheckboxes($request, $validated);
+            \Log::info('=== INICIANDO ACTUALIZACIÓN DE LIBRO ===');
+            \Log::info('Libro ID: ' . $book->id);
+            \Log::info('Datos recibidos:', $request->all());
+            \Log::info('Archivos recibidos:', [
+                'cover_image' => $request->hasFile('cover_image'),
+                'pdf_file' => $request->hasFile('pdf_file'),
+                'delete_cover' => $request->input('delete_cover'),
+                'delete_pdf' => $request->input('delete_pdf')
+            ]);
 
+            // Validar datos básicos
+            $validated = $this->validateBookData($request, $book);
+            \Log::info('✅ Validación exitosa', $validated);
+
+            // DEBUG: Verificar campos de eliminación
+            \Log::info('Campos de eliminación:', [
+                'delete_cover' => $request->input('delete_cover'),
+                'delete_pdf' => $request->input('delete_pdf')
+            ]);
+
+            // Manejar eliminación de archivos
+            if ($request->has('delete_cover') && $request->delete_cover == '1') {
+                \Log::info('🗑️  Eliminando portada...');
+                if ($book->cover_image) {
+                    Storage::disk('public')->delete($book->cover_image);
+                    $validated['cover_image'] = null;
+                    \Log::info('✅ Portada eliminada');
+                }
+            }
+
+            if ($request->has('delete_pdf') && $request->delete_pdf == '1') {
+                \Log::info('🗑️  Eliminando PDF...');
+                if ($book->pdf_file) {
+                    Storage::disk('public')->delete($book->pdf_file);
+                    $validated['pdf_file'] = null;
+                    \Log::info('✅ PDF eliminado');
+                }
+            }
+
+            // Procesar nuevos archivos
+            $validated = $this->processFiles($request, $validated, $book);
+            \Log::info('✅ Archivos procesados', [
+                'cover_image' => $validated['cover_image'] ?? 'No cambiado',
+                'pdf_file' => $validated['pdf_file'] ?? 'No cambiado'
+            ]);
+
+            // Procesar checkboxes
+            $validated = $this->processCheckboxes($request, $validated);
+            \Log::info('✅ Checkboxes procesados', [
+                'is_active' => $validated['is_active'],
+                'downloadable' => $validated['downloadable'],
+                'featured' => $validated['featured']
+            ]);
+
+            // Actualizar el libro
+            \Log::info('🔄 Actualizando libro...');
             $book->update($validated);
+            \Log::info('✅ Libro actualizado');
 
             // Sincronizar categorías
+            \Log::info('🔄 Sincronizando categorías...');
             if ($request->has('categories')) {
                 $book->categories()->sync($request->input('categories'));
+                \Log::info('✅ Categorías sincronizadas: ' . implode(', ', $request->input('categories')));
             } else {
                 $book->categories()->detach();
+                \Log::info('✅ Categorías desvinculadas');
             }
 
             // Actualizar detalles
+            \Log::info('🔄 Actualizando detalles del libro...');
             $this->updateBookDetails($book, $request);
+            \Log::info('✅ Detalles actualizados');
+
+            \Log::info('=== ACTUALIZACIÓN COMPLETADA EXITOSAMENTE ===');
 
             return redirect()->route('admin.books.index')
                 ->with('success', 'Libro actualizado exitosamente.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('❌ Error de validación en update:', $e->errors());
+            return back()->with('error', 'Error en el formulario: ' . implode(', ', $e->errors()))
+                ->withInput();
         } catch (\Exception $e) {
-            \Log::error('Error al actualizar libro: ' . $e->getMessage());
-            return back()->with('error', 'Error al actualizar el libro: ' . $e->getMessage());
+            \Log::error('❌ Error general en update: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return back()->with('error', 'Error al actualizar el libro: ' . $e->getMessage())
+                ->withInput();
         }
     }
 
@@ -248,7 +358,7 @@ class BookController extends Controller
     }
 
     /**
-     * Validación actualizada sin is_featured_new
+     * Validación actualizada con mejor debug
      */
     private function validateBookData(Request $request, Book $book = null): array
     {
@@ -271,16 +381,16 @@ class BookController extends Controller
             'copyright_status' => 'required|in:copyrighted,public_domain,creative_commons',
             'license_type' => 'nullable|string|max:100',
 
-            // DESTACADOS Y ESTADOS (SOLO featured, NO is_featured_new)
+            // DESTACADOS Y ESTADOS
             'is_active' => 'sometimes|boolean',
             'downloadable' => 'sometimes|boolean',
             'featured' => 'sometimes|boolean',
 
-            // ARCHIVOS
+            // QUITAMOS las reglas de archivos porque las maneja Livewire
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'pdf_file' => 'nullable|file|mimes:pdf|max:10240',
 
-            // DATOS OPCIONALES (para book_details)
+            // DATOS OPCIONALES
             'description' => 'nullable|string',
             'edition' => 'nullable|string|max:100',
             'file_format' => 'nullable|string|max:10',
@@ -296,14 +406,30 @@ class BookController extends Controller
         ];
 
         $messages = [
+            'title.required' => 'El título del libro es obligatorio',
+            'isbn.required' => 'El ISBN es obligatorio',
+            'isbn.unique' => 'El ISBN ya existe en el sistema',
             'publisher_id.required' => 'La editorial es obligatoria',
             'publisher_id.exists' => 'La editorial seleccionada no existe',
             'language_code.required' => 'El idioma es obligatorio',
             'language_code.exists' => 'El idioma seleccionado no existe',
-            'isbn.unique' => 'El ISBN ya existe en el sistema',
+            'publication_year.required' => 'El año de publicación es obligatorio',
+            'pages.required' => 'El número de páginas es obligatorio',
+            'book_type.required' => 'El tipo de libro es obligatorio',
+            'access_level.required' => 'El nivel de acceso es obligatorio',
+            'copyright_status.required' => 'El estado de copyright es obligatorio',
         ];
 
-        return $request->validate($rules, $messages);
+        \Log::info('Reglas de validación aplicadas');
+
+        try {
+            $validated = $request->validate($rules, $messages);
+            \Log::info('Validación exitosa');
+            return $validated;
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Error de validación:', $e->errors());
+            throw $e;
+        }
     }
 
     /**
@@ -311,27 +437,37 @@ class BookController extends Controller
      */
     private function processFiles(Request $request, array $validated, Book $book = null): array
     {
+        \Log::info('📁 Procesando archivos...', [
+            'has_cover_image' => $request->hasFile('cover_image'),
+            'has_pdf_file' => $request->hasFile('pdf_file'),
+            'book_cover' => $book ? $book->cover_image : 'No book'
+        ]);
+
         if ($request->hasFile('cover_image')) {
+            \Log::info('🖼️  Procesando nueva portada...');
             if ($book && $book->cover_image) {
                 Storage::disk('public')->delete($book->cover_image);
+                \Log::info('🗑️  Portada anterior eliminada: ' . $book->cover_image);
             }
             $validated['cover_image'] = $request->file('cover_image')->store('books', 'public');
-            \Log::info('Imagen de portada guardada: ' . $validated['cover_image']);
+            \Log::info('✅ Nueva portada guardada: ' . $validated['cover_image']);
         }
 
         if ($request->hasFile('pdf_file')) {
+            \Log::info('📄 Procesando nuevo PDF...');
             if ($book && $book->pdf_file) {
                 Storage::disk('public')->delete($book->pdf_file);
+                \Log::info('🗑️  PDF anterior eliminado: ' . $book->pdf_file);
             }
             $validated['pdf_file'] = $request->file('pdf_file')->store('books/pdfs', 'public');
-            \Log::info('PDF guardado: ' . $validated['pdf_file']);
+            \Log::info('✅ Nuevo PDF guardado: ' . $validated['pdf_file']);
         }
 
         return $validated;
     }
 
     /**
-     * Procesar checkboxes 
+     * Procesar checkboxes
      */
     private function processCheckboxes(Request $request, array $validated): array
     {
@@ -391,6 +527,17 @@ class BookController extends Controller
      */
     private function updateBookDetails(Book $book, Request $request): void
     {
+        \Log::info('📝 Actualizando detalles del libro...', [
+            'description' => $request->input('description'),
+            'edition' => $request->input('edition'),
+            'file_format' => $request->input('file_format'),
+            'file_size' => $request->input('file_size'),
+            'reading_age' => $request->input('reading_age'),
+            'deposito_legal' => $request->input('deposito_legal'),
+            'restrictions' => $request->input('restrictions'),
+            'notes' => $request->input('notes')
+        ]);
+
         if ($book->details) {
             $book->details->update([
                 'description' => $request->input('description'),
@@ -402,8 +549,20 @@ class BookController extends Controller
                 'restrictions' => $request->input('restrictions'),
                 'notes' => $request->input('notes'),
             ]);
+            \Log::info('✅ Detalles existentes actualizados');
         } else {
-            $this->createBookDetails($book, $request);
+            BookDetail::create([
+                'book_id' => $book->id,
+                'description' => $request->input('description'),
+                'edition' => $request->input('edition', '1ra'),
+                'file_format' => $request->input('file_format', 'PDF'),
+                'file_size' => $request->input('file_size'),
+                'reading_age' => $request->input('reading_age'),
+                'deposito_legal' => $request->input('deposito_legal'),
+                'restrictions' => $request->input('restrictions'),
+                'notes' => $request->input('notes'),
+            ]);
+            \Log::info('✅ Nuevos detalles creados');
         }
     }
 
@@ -534,5 +693,14 @@ class BookController extends Controller
                 'message' => 'Error al crear la editorial: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getPhysicalStats(Book $book)
+    {
+        return response()->json([
+            'total_copies' => $book->total_physical_copies,
+            'available_copies' => $book->available_physical_copies,
+            'total_loans' => $book->total_loans,
+        ]);
     }
 }

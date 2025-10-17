@@ -1,5 +1,4 @@
 <?php
-// app/Livewire/BookContributorsManager.php
 
 namespace App\Livewire;
 
@@ -9,6 +8,7 @@ use App\Models\BookContributor;
 
 class BookContributorsManager extends Component
 {
+    public $bookId;
     public $book;
     public $contributors = [];
     public $showForm = false;
@@ -30,10 +30,11 @@ class BookContributorsManager extends Component
         'form.biographical_note' => 'nullable|string'
     ];
 
-    public function mount($book = null)
+    public function mount($bookId = null)
     {
-        if ($book) {
-            $this->book = $book;
+        if ($bookId) {
+            $this->bookId = $bookId;
+            $this->book = Book::with('contributors')->find($bookId);
             $this->loadContributors();
         } else {
             // Para creación, inicializar array vacío
@@ -43,7 +44,7 @@ class BookContributorsManager extends Component
 
     public function loadContributors()
     {
-        if ($this->book && $this->book->exists) {
+        if ($this->book) {
             $this->contributors = $this->book->contributors()
                 ->orderBy('sequence_number')
                 ->get()
@@ -58,7 +59,7 @@ class BookContributorsManager extends Component
         $this->validate();
 
         // Si no hay libro (creación), guardar en array temporal
-        if (!$this->book || !$this->book->exists) {
+        if (!$this->book) {
             $this->contributors[] = array_merge($this->form, ['id' => uniqid()]);
             $this->resetForm();
             $this->showForm = false;

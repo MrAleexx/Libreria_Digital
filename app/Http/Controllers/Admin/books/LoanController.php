@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Book;
 use App\Models\BookLoan;
 use App\Models\User;
-use App\Http\Controllers\Admin\books\StoreLoanRequest;
+use App\Http\Requests\Admin\users\StoreLoanRequest;
 
 class LoanController extends Controller
 {

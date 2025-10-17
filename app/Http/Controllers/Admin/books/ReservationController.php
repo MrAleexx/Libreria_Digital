@@ -9,7 +9,7 @@ use App\Models\BookReservation;
 use App\Models\User;
 use App\Models\PhysicalCopy;
 use App\Models\BookLoan;
-use App\Http\Requests\Admin\books\StoreReservationRequest;
+use App\Http\Requests\Admin\users\StoreReservationRequest;
 class ReservationController extends Controller
 {
     public function index()
