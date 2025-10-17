@@ -5,11 +5,44 @@
 @section('subtitle', 'Administra el catálogo de la biblioteca')
 
 @section('content')
+    <!-- Mensajes de éxito/error -->
+    @if (session('success'))
+        <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span class="font-medium">Éxito:</span>
+                <span class="ml-2">{{ session('success') }}</span>
+            </div>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span class="font-medium">Error:</span>
+                <span class="ml-2">{{ session('error') }}</span>
+            </div>
+        </div>
+    @endif
+
+    <!-- Debug Info (solo en desarrollo) -->
+    @if (config('app.debug'))
+        <div class="mb-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+            <div class="flex items-center">
+                <i class="fas fa-bug mr-2"></i>
+                <span class="font-medium">Modo Debug:</span>
+                <span class="ml-2">Revisa la consola del navegador y los logs de Laravel</span>
+            </div>
+        </div>
+    @endif
+
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 class="text-lg font-semibold flex items-center">
                 <i class="fas fa-book text-blue-500 mr-2"></i>
                 Biblioteca Digital - Catálogo de Libros
+                <span class="ml-2 text-sm text-gray-500">(Total: {{ $books->total() }})</span>
             </h3>
             <a href="{{ route('admin.books.create') }}"
                 class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-5 py-2.5 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center space-x-2 font-medium shadow-sm hover:from-blue-600 hover:to-blue-700">
@@ -28,13 +61,7 @@
                                     Libro
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Categorías
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Acceso
-                                </th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Estadísticas
+                                    Información
                                 </th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Estado
@@ -46,126 +73,112 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             @foreach ($books as $book)
-                                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                <tr class="hover:bg-gray-50 transition-colors duration-150" id="book-{{ $book->id }}">
+                                    <td class="px-6 py-4">
                                         <div class="flex items-center">
-                                            @if ($book->image)
-                                                {{-- Usa el componente book-image --}}
-                                                <x-book-image :image="$book->image" :title="$book->title"
-                                                    class="h-10 w-10 rounded-lg" defaultClass="h-10 w-10 rounded-lg" />
+                                            @if ($book->cover_image)
+                                                <x-book-image :image="$book->cover_image" :title="$book->title"
+                                                    class="h-12 w-12 rounded-lg object-cover" />
                                             @else
                                                 <div
-                                                    class="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
-                                                    <i class="fas fa-book text-gray-400"></i>
+                                                    class="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-book text-gray-400 text-lg"></i>
                                                 </div>
                                             @endif
                                             <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900 line-clamp-1">
+                                                <div class="text-sm font-medium text-gray-900 line-clamp-2">
                                                     {{ $book->title }}
                                                 </div>
-                                                <div class="text-sm text-gray-500">
-                                                    {{ $book->main_author }}
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    ID: {{ $book->id }} | ISBN: {{ $book->isbn }}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex flex-wrap gap-1">
-                                            @forelse($book->categories->take(2) as $category)
-                                                <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {{ $category->name }}
-                                                </span>
-                                            @empty
-                                                <span class="text-gray-400 text-xs">Sin categorías</span>
-                                            @endforelse
-                                            @if ($book->categories->count() > 2)
-                                                <span class="text-gray-500 text-xs">+{{ $book->categories->count() - 2 }}
-                                                    más</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span
-                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                                            @if ($book->access_level === 'free') bg-green-100 text-green-800
-                                            @elseif($book->access_level === 'premium') bg-yellow-100 text-yellow-800
-                                            @else bg-purple-100 text-purple-800 @endif">
-                                            <i
-                                                class="fas
-                                                @if ($book->access_level === 'free') fa-unlock mr-1
-                                                @elseif($book->access_level === 'premium') fa-crown mr-1
-                                                @else fa-building mr-1 @endif text-xs">
-                                            </i>
-                                            {{ ucfirst($book->access_level) }}
-                                        </span>
-                                        @if ($book->featured)
-                                            <span
-                                                class="ml-1 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                                <i class="fas fa-star mr-1 text-xs"></i>
-                                                Destacado
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-xs text-gray-600 space-y-1">
-                                            <div class="flex items-center">
-                                                <i class="fas fa-eye text-blue-500 mr-1 text-xs"></i>
-                                                <span>{{ $book->total_views }} vistas</span>
+                                    <td class="px-6 py-4">
+                                        <div class="space-y-1">
+                                            <div class="text-xs">
+                                                <span class="font-medium">Autor:</span>
+                                                {{ $book->main_author ?? 'Sin autor' }}
                                             </div>
-                                            <div class="flex items-center">
-                                                <i class="fas fa-download text-green-500 mr-1 text-xs"></i>
-                                                <span>{{ $book->total_downloads }} descargas</span>
+                                            <div class="text-xs">
+                                                <span class="font-medium">Editorial:</span>
+                                                {{ $book->publisher->name ?? 'Sin editorial' }}
+                                            </div>
+                                            <div class="text-xs">
+                                                <span class="font-medium">Año:</span>
+                                                {{ $book->publication_year }}
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex flex-col space-y-1">
+                                    <td class="px-6 py-4">
+                                        <div class="space-y-2">
+                                            <!-- Estado Activo/Inactivo -->
                                             @if ($book->is_active)
                                                 <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    <i class="fas fa-check-circle mr-1 text-xs"></i>
+                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <i class="fas fa-check-circle mr-1"></i>
                                                     Activo
                                                 </span>
                                             @else
                                                 <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                    <i class="fas fa-times-circle mr-1 text-xs"></i>
+                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                    <i class="fas fa-times-circle mr-1"></i>
                                                     Inactivo
                                                 </span>
                                             @endif
 
-                                            {{-- ELIMINADO: is_new - usar featured --}}
-                                            @if ($book->featured)
-                                                <span
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                                    <i class="fas fa-star mr-1 text-xs"></i>
-                                                    Destacado
-                                                </span>
-                                            @endif
+                                            <!-- Tipo de Acceso -->
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                @if ($book->access_level === 'free') bg-green-100 text-green-800
+                                                @elseif($book->access_level === 'premium') bg-yellow-100 text-yellow-800
+                                                @else bg-purple-100 text-purple-800 @endif">
+                                                <i
+                                                    class="fas 
+                                                    @if ($book->access_level === 'free') fa-unlock 
+                                                    @elseif($book->access_level === 'premium') fa-crown 
+                                                    @else fa-building @endif mr-1">
+                                                </i>
+                                                {{ ucfirst($book->access_level) }}
+                                            </span>
+
+                                            <!-- Estadísticas -->
+                                            <div class="text-xs text-gray-600">
+                                                <div class="flex items-center space-x-2">
+                                                    <span><i class="fas fa-eye"></i> {{ $book->total_views }}</span>
+                                                    <span><i class="fas fa-download"></i>
+                                                        {{ $book->total_downloads }}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <td class="px-6 py-4">
                                         <div class="flex space-x-2">
+                                            <!-- Ver -->
                                             <a href="{{ route('admin.books.show', $book) }}"
-                                                class="text-blue-600 hover:text-blue-900 flex items-center"
+                                                class="text-blue-600 hover:text-blue-900 flex items-center p-2 rounded hover:bg-blue-50 transition-colors"
                                                 title="Ver detalles">
-                                                <i class="fas fa-eye mr-1"></i>
+                                                <i class="fas fa-eye"></i>
                                             </a>
+
+                                            <!-- Editar -->
                                             <a href="{{ route('admin.books.edit', $book) }}"
-                                                class="text-green-600 hover:text-green-900 flex items-center"
+                                                class="text-green-600 hover:text-green-900 flex items-center p-2 rounded hover:bg-green-50 transition-colors"
                                                 title="Editar">
-                                                <i class="fas fa-edit mr-1"></i>
+                                                <i class="fas fa-edit"></i>
                                             </a>
+
+                                            <!-- Eliminar -->
                                             <form action="{{ route('admin.books.destroy', $book) }}" method="POST"
-                                                class="inline"
-                                                onsubmit="return confirm('¿Estás seguro de eliminar este libro?')">
+                                                class="inline delete-book-form" data-book-id="{{ $book->id }}"
+                                                data-book-title="{{ $book->title }}">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
-                                                    class="text-red-600 hover:text-red-900 flex items-center"
+                                                    class="text-red-600 hover:text-red-900 flex items-center p-2 rounded hover:bg-red-50 transition-colors delete-book-btn"
                                                     title="Eliminar">
-                                                    <i class="fas fa-trash mr-1"></i>
+                                                    <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
                                         </div>
@@ -198,11 +211,73 @@
     </div>
 @endsection
 
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== SISTEMA DE ELIMINACIÓN DE LIBROS INICIADO ===');
+
+            const deleteForms = document.querySelectorAll('.delete-book-form');
+
+            deleteForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const bookId = this.getAttribute('data-book-id');
+                    const bookTitle = this.getAttribute('data-book-title');
+
+                    console.log(`Intentando eliminar libro: ID ${bookId}, Título: "${bookTitle}"`);
+
+                    // SweetAlert2 para confirmación
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: '¿Estás seguro?',
+                            html: `Vas a eliminar el libro: <strong>"${bookTitle}"</strong><br><br>
+                          <span class="text-sm text-red-600">Esta acción no se puede deshacer.</span>`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#3085d6',
+                            confirmButtonText: 'Sí, eliminar',
+                            cancelButtonText: 'Cancelar',
+                            reverseButtons: true,
+                            backdrop: true,
+                            allowOutsideClick: false
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                console.log(`Confirmado: Eliminando libro ID ${bookId}`);
+                                this.submit();
+                            } else {
+                                console.log('Eliminación cancelada por el usuario');
+                            }
+                        });
+                    } else {
+                        // Fallback a confirm nativo
+                        if (confirm(`¿Estás seguro de eliminar el libro: "${bookTitle}"?`)) {
+                            console.log(`Confirmado: Eliminando libro ID ${bookId}`);
+                            this.submit();
+                        } else {
+                            console.log('Eliminación cancelada por el usuario');
+                        }
+                    }
+                });
+            });
+
+            // Debug: Mostrar info de todos los formularios
+            console.log(`Encontrados ${deleteForms.length} formularios de eliminación`);
+            deleteForms.forEach((form, index) => {
+                const bookId = form.getAttribute('data-book-id');
+                const bookTitle = form.getAttribute('data-book-title');
+                console.log(`Formulario ${index + 1}: Libro ID ${bookId} - "${bookTitle}"`);
+            });
+        });
+    </script>
+@endpush
+
 @push('styles')
     <style>
-        .line-clamp-1 {
+        .line-clamp-2 {
             display: -webkit-box;
-            -webkit-line-clamp: 1;
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }

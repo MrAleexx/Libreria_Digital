@@ -93,7 +93,14 @@ class Book extends Model
     // Relación con préstamos
     public function loans(): HasManyThrough
     {
-        return $this->hasManyThrough(BookLoan::class, PhysicalCopy::class);
+        return $this->hasManyThrough(
+            BookLoan::class,          // Modelo destino
+            PhysicalCopy::class,      // Modelo intermedio
+            'book_id',                // Clave foránea en physical_copies
+            'physical_copy_id',       // Clave foránea en book_loans
+            'id',                     // Clave local en books
+            'id'                      // Clave local en physical_copies
+        );
     }
 
     // Relaciones existentes (mantener para compatibilidad)
@@ -115,6 +122,22 @@ class Book extends Model
     public function downloads(): HasMany
     {
         return $this->hasMany(UserDownload::class);
+    }
+
+    public function activeLoans()
+    {
+        return $this->loans()->where('status', 'active');
+    }
+
+    public function activeReservations()
+    {
+        return $this->reservations()
+            ->whereIn('status', ['pending', 'ready_for_pickup']);
+    }
+
+    public function bookLoans()
+    {
+        return $this->hasMany(BookLoan::class);
     }
 
     // ACCESORES PARA DATOS OPCIONALES

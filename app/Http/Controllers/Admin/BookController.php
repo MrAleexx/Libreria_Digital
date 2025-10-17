@@ -14,6 +14,11 @@ use App\Models\UserDownload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use App\Models\BookLoan;
+use App\Models\BookReservation;
+use App\Models\PhysicalCopy;
+use App\Models\BookContent;
 
 class BookController extends Controller
 {
@@ -25,33 +30,49 @@ class BookController extends Controller
 
     public function create()
     {
+        // DEBUG
+        \Log::info('Accediendo a create book form');
+
         $categories = Category::active()->orderBy('sort_order')->get();
         $publishers = Publisher::active()->get();
         $languages = Language::active()->get();
+
+        \Log::info('Datos para el formulario:', [
+            'categories_count' => $categories->count(),
+            'publishers_count' => $publishers->count(),
+            'languages_count' => $languages->count()
+        ]);
 
         return view('admin.books.create', compact('categories', 'publishers', 'languages'));
     }
 
     public function store(Request $request)
     {
-        $validated = $this->validateBookData($request);
-        $validated = $this->processFiles($request, $validated);
-        $validated = $this->processCheckboxes($request, $validated);
-
         try {
-            $book = Book::create($validated);
+            $validated = $this->validateBookData($request);
+            $validated = $this->processFiles($request, $validated);
+            $validated = $this->processCheckboxes($request, $validated);
 
+            \Log::info('Intentando crear libro...');
+
+            // Crear el libro básico
+            $book = Book::create($validated);
+            \Log::info('Libro creado con ID: ' . $book->id);
+
+            // Procesar categorías
             if ($request->has('categories')) {
                 $book->categories()->sync($request->input('categories'));
             }
 
+            // Crear detalles del libro
             $this->createBookDetails($book, $request);
-            $this->processContributors($book, $request->input('contributors', []));
 
-            return redirect()->route('admin.books.index')
-                ->with('success', 'Libro creado exitosamente.');
+            return redirect()->route('admin.books.edit', $book)
+                ->with('success', 'Libro creado exitosamente. Ahora puedes agregar contribuidores e índice.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error al crear el libro: ' . $e->getMessage());
+            \Log::error('Error al crear libro: ' . $e->getMessage());
+            return back()->with('error', 'Error al crear el libro: ' . $e->getMessage())
+                ->withInput();
         }
     }
 
@@ -84,59 +105,146 @@ class BookController extends Controller
 
     public function update(Request $request, Book $book)
     {
-        $validated = $this->validateBookData($request, $book);
-        $validated = $this->processFiles($request, $validated, $book);
-        $validated = $this->processCheckboxes($request, $validated);
-
         try {
+            $validated = $this->validateBookData($request, $book);
+            $validated = $this->processFiles($request, $validated, $book);
+            $validated = $this->processCheckboxes($request, $validated);
+
             $book->update($validated);
 
+            // Sincronizar categorías
             if ($request->has('categories')) {
                 $book->categories()->sync($request->input('categories'));
             } else {
                 $book->categories()->detach();
             }
 
+            // Actualizar detalles
             $this->updateBookDetails($book, $request);
 
             return redirect()->route('admin.books.index')
                 ->with('success', 'Libro actualizado exitosamente.');
         } catch (\Exception $e) {
+            \Log::error('Error al actualizar libro: ' . $e->getMessage());
             return back()->with('error', 'Error al actualizar el libro: ' . $e->getMessage());
+        }
+    }
+
+    private function deleteBookFiles(Book $book): void
+    {
+        try {
+            if ($book->cover_image) {
+                \Log::info("Eliminando imagen: {$book->cover_image}");
+                if (Storage::disk('public')->exists($book->cover_image)) {
+                    Storage::disk('public')->delete($book->cover_image);
+                    \Log::info("Imagen eliminada: {$book->cover_image}");
+                } else {
+                    \Log::warning("Imagen no encontrada: {$book->cover_image}");
+                }
+            }
+
+            if ($book->pdf_file) {
+                \Log::info("Eliminando PDF: {$book->pdf_file}");
+                if (Storage::disk('public')->exists($book->pdf_file)) {
+                    Storage::disk('public')->delete($book->pdf_file);
+                    \Log::info("PDF eliminado: {$book->pdf_file}");
+                } else {
+                    \Log::warning("PDF no encontrado: {$book->pdf_file}");
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error al eliminar archivos: ' . $e->getMessage());
+            // Continuar con la eliminación aunque falle la eliminación de archivos
         }
     }
 
     public function destroy(Book $book)
     {
-        // Verificar si hay préstamos o reservas activas antes de eliminar
-        if ($book->loans()->where('status', 'active')->exists()) {
-            return back()->with('error', 'No se puede eliminar el libro porque tiene préstamos activos.');
+        try {
+            \Log::info("=== INICIANDO ELIMINACIÓN DEL LIBRO ===");
+            \Log::info("Libro ID: {$book->id}, Título: {$book->title}");
+
+            // VERIFICACIONES CORREGIDAS - Usar consultas directas
+            \Log::info("Verificando préstamos activos...");
+            $activeLoansCount = BookLoan::whereHas('physicalCopy', function ($query) use ($book) {
+                $query->where('book_id', $book->id);
+            })->where('status', 'active')->count();
+
+            if ($activeLoansCount > 0) {
+                \Log::warning("No se puede eliminar: {$activeLoansCount} préstamos activos");
+                return back()->with('error', "No se puede eliminar el libro porque tiene {$activeLoansCount} préstamo(s) activo(s).");
+            }
+
+            \Log::info("Verificando reservas activas...");
+            $activeReservationsCount = BookReservation::where('book_id', $book->id)
+                ->whereIn('status', ['pending', 'ready_for_pickup'])
+                ->count();
+
+            if ($activeReservationsCount > 0) {
+                \Log::warning("No se puede eliminar: {$activeReservationsCount} reservas activas");
+                return back()->with('error', "No se puede eliminar el libro porque tiene {$activeReservationsCount} reserva(s) activa(s).");
+            }
+
+            \Log::info("Iniciando eliminación en transacción...");
+
+            // Usar transacción para asegurar consistencia
+            DB::transaction(function () use ($book) {
+
+                // ELIMINACIÓN EN ORDEN CORRECTO PARA EVITAR ERRORES DE FK
+
+                \Log::info("1. Eliminando descargas de usuarios...");
+                UserDownload::where('book_id', $book->id)->delete();
+
+                \Log::info("2. Eliminando préstamos relacionados...");
+                // Obtener IDs de ejemplares físicos primero
+                $physicalCopyIds = PhysicalCopy::where('book_id', $book->id)->pluck('id');
+
+                if ($physicalCopyIds->isNotEmpty()) {
+                    \Log::info("Eliminando préstamos para {$physicalCopyIds->count()} ejemplares físicos...");
+                    BookLoan::whereIn('physical_copy_id', $physicalCopyIds)->delete();
+                }
+
+                \Log::info("3. Eliminando reservas...");
+                BookReservation::where('book_id', $book->id)->delete();
+
+                \Log::info("4. Eliminando ejemplares físicos...");
+                PhysicalCopy::where('book_id', $book->id)->delete();
+
+                \Log::info("5. Eliminando contribuidores...");
+                BookContributor::where('book_id', $book->id)->delete();
+
+                \Log::info("6. Eliminando contenido/índice...");
+                BookContent::where('book_id', $book->id)->delete();
+
+                \Log::info("7. Eliminando detalles opcionales...");
+                BookDetail::where('book_id', $book->id)->delete();
+
+                \Log::info("8. Desvinculando categorías...");
+                DB::table('book_category')->where('book_id', $book->id)->delete();
+
+                \Log::info("9. Eliminando archivos...");
+                $this->deleteBookFiles($book);
+
+                \Log::info("10. Eliminando libro de la base de datos...");
+                $book->delete();
+            });
+
+            \Log::info("=== LIBRO ELIMINADO EXITOSAMENTE ===");
+
+            return redirect()->route('admin.books.index')
+                ->with('success', 'Libro eliminado exitosamente.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Error de base de datos al eliminar libro: ' . $e->getMessage());
+            \Log::error('SQL: ' . $e->getSql());
+            \Log::error('Bindings: ' . json_encode($e->getBindings()));
+
+            return back()->with('error', 'Error de base de datos al eliminar el libro: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            \Log::error('Error general al eliminar libro: ' . $e->getMessage());
+            \Log::error('Trace: ' . $e->getTraceAsString());
+
+            return back()->with('error', 'Error al eliminar el libro: ' . $e->getMessage());
         }
-
-        if ($book->reservations()->whereIn('status', ['pending', 'ready_for_pickup'])->exists()) {
-            return back()->with('error', 'No se puede eliminar el libro porque tiene reservas activas.');
-        }
-
-        $book->contributors()->delete();
-        $book->categories()->detach();
-        $book->contents()->delete();
-        $book->details()->delete();
-        $book->downloads()->delete();
-        $book->physicalCopies()->delete();
-        $book->reservations()->delete();
-
-        if ($book->cover_image) {
-            Storage::disk('public')->delete($book->cover_image);
-        }
-
-        if ($book->pdf_file) {
-            Storage::disk('public')->delete($book->pdf_file);
-        }
-
-        $book->delete();
-
-        return redirect()->route('admin.books.index')
-            ->with('success', 'Libro eliminado exitosamente.');
     }
 
     /**
@@ -148,7 +256,7 @@ class BookController extends Controller
             ? 'required|string|unique:books,isbn,' . $book->id
             : 'required|string|unique:books,isbn';
 
-        return $request->validate([
+        $rules = [
             // INFORMACIÓN BÁSICA ESENCIAL
             'title' => 'required|string|max:255',
             'isbn' => $isbnRule,
@@ -164,9 +272,9 @@ class BookController extends Controller
             'license_type' => 'nullable|string|max:100',
 
             // DESTACADOS Y ESTADOS (SOLO featured, NO is_featured_new)
-            'is_active' => 'boolean',
-            'downloadable' => 'boolean',
-            'featured' => 'boolean',
+            'is_active' => 'sometimes|boolean',
+            'downloadable' => 'sometimes|boolean',
+            'featured' => 'sometimes|boolean',
 
             // ARCHIVOS
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -185,15 +293,17 @@ class BookController extends Controller
             // CATEGORÍAS
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
+        ];
 
-            // CONTRIBUIDORES
-            'contributors' => 'nullable|array',
-            'contributors.*.full_name' => 'required|string|max:200',
-            'contributors.*.contributor_type' => 'required|in:author,editor,translator,illustrator',
-            'contributors.*.email' => 'nullable|email|max:100',
-            'contributors.*.sequence_number' => 'nullable|integer|min:1',
-            'contributors.*.biographical_note' => 'nullable|string',
-        ]);
+        $messages = [
+            'publisher_id.required' => 'La editorial es obligatoria',
+            'publisher_id.exists' => 'La editorial seleccionada no existe',
+            'language_code.required' => 'El idioma es obligatorio',
+            'language_code.exists' => 'El idioma seleccionado no existe',
+            'isbn.unique' => 'El ISBN ya existe en el sistema',
+        ];
+
+        return $request->validate($rules, $messages);
     }
 
     /**
@@ -206,6 +316,7 @@ class BookController extends Controller
                 Storage::disk('public')->delete($book->cover_image);
             }
             $validated['cover_image'] = $request->file('cover_image')->store('books', 'public');
+            \Log::info('Imagen de portada guardada: ' . $validated['cover_image']);
         }
 
         if ($request->hasFile('pdf_file')) {
@@ -213,6 +324,7 @@ class BookController extends Controller
                 Storage::disk('public')->delete($book->pdf_file);
             }
             $validated['pdf_file'] = $request->file('pdf_file')->store('books/pdfs', 'public');
+            \Log::info('PDF guardado: ' . $validated['pdf_file']);
         }
 
         return $validated;
@@ -226,6 +338,12 @@ class BookController extends Controller
         $validated['is_active'] = $request->boolean('is_active', true);
         $validated['downloadable'] = $request->boolean('downloadable', true);
         $validated['featured'] = $request->boolean('featured', false);
+
+        \Log::info('Checkboxes procesados:', [
+            'is_active' => $validated['is_active'],
+            'downloadable' => $validated['downloadable'],
+            'featured' => $validated['featured']
+        ]);
 
         return $validated;
     }

@@ -6,7 +6,7 @@
     </h3>
 
     <div class="space-y-6">
-        <!-- Nivel de Acceso y Destacado -->
+        <!-- Nivel de Acceso y Copyright -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <label for="access_level" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -53,25 +53,86 @@
                 </div>
             </div>
 
-            <!-- Libro Destacado -->
-            <div class="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <div>
-                    <label for="featured" class="block text-sm font-medium text-purple-700 mb-1 flex items-center">
-                        <i class="fas fa-star text-yellow-500 mr-2"></i>
-                        Libro Destacado
+            <!-- Estado de Copyright -->
+            <div>
+                <label for="copyright_status" class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <i class="fas fa-copyright text-gray-400 mr-2 text-xs"></i>
+                    Estado de Copyright *
+                </label>
+                <select id="copyright_status" name="copyright_status" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="">Seleccionar estado</option>
+                    <option value="copyrighted"
+                        {{ old('copyright_status', $book->copyright_status ?? '') == 'copyrighted' ? 'selected' : '' }}>
+                        <span class="flex items-center">
+                            <i class="fas fa-lock text-red-500 mr-2"></i>
+                            Copyright - Con derechos reservados
+                        </span>
+                    </option>
+                    <option value="public_domain"
+                        {{ old('copyright_status', $book->copyright_status ?? '') == 'public_domain' ? 'selected' : '' }}>
+                        <span class="flex items-center">
+                            <i class="fas fa-globe text-green-500 mr-2"></i>
+                            Dominio Público - Libre uso
+                        </span>
+                    </option>
+                    <option value="creative_commons"
+                        {{ old('copyright_status', $book->copyright_status ?? '') == 'creative_commons' ? 'selected' : '' }}>
+                        <span class="flex items-center">
+                            <i class="fas fa-balance-scale text-blue-500 mr-2"></i>
+                            Creative Commons - Con licencia
+                        </span>
+                    </option>
+                </select>
+                <div class="mt-2 text-xs text-gray-500 space-y-1" id="copyright_help">
+                    <div class="flex items-center">
+                        <i class="fas fa-lock text-red-500 mr-1"></i>
+                        <span><strong>Copyright:</strong> Derechos reservados del autor</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-globe text-green-500 mr-1"></i>
+                        <span><strong>Dominio Público:</strong> Libre para cualquier uso</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-balance-scale text-blue-500 mr-1"></i>
+                        <span><strong>Creative Commons:</strong> Uso según licencia específica</span>
+                    </div>
+                </div>
+
+                <!-- Campo para tipo de licencia (solo visible para Creative Commons) -->
+                <div id="license_type_container" class="mt-3 hidden">
+                    <label for="license_type" class="block text-xs font-medium text-gray-600 mb-1">
+                        Tipo de Licencia Creative Commons
                     </label>
-                    <p class="text-xs text-purple-600">
-                        Aparecerá en la sección principal de la biblioteca
+                    <input type="text" id="license_type" name="license_type"
+                        class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                        value="{{ old('license_type', $book->license_type ?? '') }}"
+                        placeholder="Ej: CC BY-SA 4.0, CC BY-NC 3.0">
+                    <p class="text-xs text-gray-500 mt-1">
+                        Especifica el tipo de licencia Creative Commons
                     </p>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="featured" name="featured" value="1" class="sr-only peer"
-                        {{ old('featured', $book->featured ?? false) ? 'checked' : '' }}>
-                    <div
-                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600">
-                    </div>
-                </label>
             </div>
+        </div>
+
+        <!-- Libro Destacado -->
+        <div class="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <div>
+                <label for="featured" class="block text-sm font-medium text-purple-700 mb-1 flex items-center">
+                    <i class="fas fa-star text-yellow-500 mr-2"></i>
+                    Libro Destacado
+                </label>
+                <p class="text-xs text-purple-600">
+                    Aparecerá en la sección principal de la biblioteca
+                </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="featured" name="featured" value="1" class="sr-only peer"
+                    {{ old('featured', $book->featured ?? false) ? 'checked' : '' }}>
+                <div
+                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600">
+                </div>
+            </label>
         </div>
 
         <!-- Estadísticas (solo en edición) -->
@@ -105,3 +166,41 @@
         @endif
     </div>
 </div>
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const copyrightStatus = document.getElementById('copyright_status');
+            const licenseTypeContainer = document.getElementById('license_type_container');
+            const licenseTypeInput = document.getElementById('license_type');
+
+            // Mostrar/ocultar campo de licencia según el estado de copyright
+            function toggleLicenseField() {
+                if (copyrightStatus.value === 'creative_commons') {
+                    licenseTypeContainer.classList.remove('hidden');
+                    licenseTypeInput.required = true;
+                } else {
+                    licenseTypeContainer.classList.add('hidden');
+                    licenseTypeInput.required = false;
+                    licenseTypeInput.value = '';
+                }
+            }
+
+            // Inicializar estado
+            toggleLicenseField();
+
+            // Escuchar cambios
+            copyrightStatus.addEventListener('change', toggleLicenseField);
+
+            // Validación antes de enviar el formulario
+            document.getElementById('bookForm')?.addEventListener('submit', function(e) {
+                if (!copyrightStatus.value) {
+                    e.preventDefault();
+                    alert('Por favor, selecciona el estado de copyright');
+                    copyrightStatus.focus();
+                    return false;
+                }
+            });
+        });
+    </script>
+@endpush

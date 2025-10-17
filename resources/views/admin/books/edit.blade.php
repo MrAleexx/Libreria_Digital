@@ -1,7 +1,7 @@
 {{-- resources/views/admin/books/edit.blade.php --}}
 @extends('admin.layout')
 
-@section('title', 'Editar Libro')
+@section('title', 'Editar Libro: ' . $book->title)
 @section('subtitle', 'Modificar información del libro')
 
 @section('content')
@@ -19,17 +19,17 @@
                 'method' => 'PUT',
                 'book' => $book,
                 'categories' => $categories,
+                'selectedCategories' => $book->categories->pluck('id')->toArray(),
             ])
-
-            <!-- Gestión de Contribuidores -->
-            <div class="mt-8" wire:ignore>
-                @livewire('book-contributors-manager', ['book' => $book], key('contributors-' . $book->id))
-            </div>
-
-            <!-- Gestión de Contenido -->
-            <div class="mt-8" wire:ignore>
-                @livewire('book-contents-manager', ['book' => $book], key('contents-' . $book->id))
-            </div>
         </div>
+    </div>
+
+    {{-- Componentes Livewire PARA EDICIÓN --}}
+    <div class="mt-6 bg-white rounded-lg shadow overflow-hidden">
+        @livewire('book-contributors-manager', ['book' => $book], key('contributors-' . $book->id))
+    </div>
+
+    <div class="mt-6 bg-white rounded-lg shadow overflow-hidden">
+        @livewire('book-contents-manager', ['book' => $book], key('contents-' . $book->id))
     </div>
 @endsection

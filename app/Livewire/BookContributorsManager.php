@@ -1,4 +1,5 @@
 <?php
+// app/Livewire/BookContributorsManager.php
 
 namespace App\Livewire;
 
@@ -29,24 +30,43 @@ class BookContributorsManager extends Component
         'form.biographical_note' => 'nullable|string'
     ];
 
-    public function mount(Book $book)
+    public function mount($book = null)
     {
-        $this->book = $book;
-        $this->loadContributors();
+        if ($book) {
+            $this->book = $book;
+            $this->loadContributors();
+        } else {
+            // Para creación, inicializar array vacío
+            $this->contributors = [];
+        }
     }
 
     public function loadContributors()
     {
-        $this->contributors = $this->book->contributors()
-            ->orderBy('sequence_number')
-            ->get()
-            ->toArray();
+        if ($this->book && $this->book->exists) {
+            $this->contributors = $this->book->contributors()
+                ->orderBy('sequence_number')
+                ->get()
+                ->toArray();
+        } else {
+            $this->contributors = [];
+        }
     }
 
     public function addContributor()
     {
         $this->validate();
 
+        // Si no hay libro (creación), guardar en array temporal
+        if (!$this->book || !$this->book->exists) {
+            $this->contributors[] = array_merge($this->form, ['id' => uniqid()]);
+            $this->resetForm();
+            $this->showForm = false;
+            session()->flash('message', 'Contribuidor agregado (se guardará al crear el libro).');
+            return;
+        }
+
+        // Si hay libro, guardar en base de datos
         try {
             BookContributor::create(array_merge($this->form, [
                 'book_id' => $this->book->id
@@ -64,6 +84,10 @@ class BookContributorsManager extends Component
 
     public function editContributor($index)
     {
+        if (!isset($this->contributors[$index])) {
+            return;
+        }
+
         $contributor = $this->contributors[$index];
         $this->form = [
             'contributor_type' => $contributor['contributor_type'],
@@ -80,9 +104,26 @@ class BookContributorsManager extends Component
     {
         $this->validate();
 
+        // Si no hay libro (creación), actualizar array temporal
+        if (!$this->book || !$this->book->exists) {
+            if (isset($this->contributors[$this->editingIndex])) {
+                $this->contributors[$this->editingIndex] = array_merge(
+                    $this->form,
+                    ['id' => $this->contributors[$this->editingIndex]['id']]
+                );
+            }
+            $this->resetForm();
+            $this->showForm = false;
+            session()->flash('message', 'Contribuidor actualizado.');
+            return;
+        }
+
+        // Si hay libro, actualizar en base de datos
         try {
             $contributor = BookContributor::find($this->contributors[$this->editingIndex]['id']);
-            $contributor->update($this->form);
+            if ($contributor) {
+                $contributor->update($this->form);
+            }
 
             $this->resetForm();
             $this->loadContributors();
@@ -96,9 +137,23 @@ class BookContributorsManager extends Component
 
     public function deleteContributor($index)
     {
+        if (!isset($this->contributors[$index])) {
+            return;
+        }
+
+        // Si no hay libro (creación), eliminar del array temporal
+        if (!$this->book || !$this->book->exists) {
+            array_splice($this->contributors, $index, 1);
+            session()->flash('message', 'Contribuidor eliminado.');
+            return;
+        }
+
+        // Si hay libro, eliminar de base de datos
         try {
             $contributor = BookContributor::find($this->contributors[$index]['id']);
-            $contributor->delete();
+            if ($contributor) {
+                $contributor->delete();
+            }
 
             $this->loadContributors();
             session()->flash('message', 'Contribuidor eliminado exitosamente.');

@@ -34,18 +34,27 @@ class BookContentsManager extends Component
         'importText' => 'nullable|string|min:10'
     ];
 
-    public function mount(Book $book)
+    public function mount($book = null)
     {
-        $this->book = $book;
-        $this->loadContents();
+        if ($book) {
+            $this->book = $book;
+            $this->loadContents();
+        } else {
+            // Para creación, inicializar array vacío
+            $this->contents = [];
+        }
     }
 
     public function loadContents()
     {
-        $this->contents = $this->book->contents()
-            ->orderBy('sort_order')
-            ->get()
-            ->toArray();
+        if ($this->book && $this->book->exists) {
+            $this->contents = $this->book->contents()
+                ->orderBy('sort_order')
+                ->get()
+                ->toArray();
+        } else {
+            $this->contents = [];
+        }
 
         $this->selectedItems = [];
         $this->selectAll = false;
@@ -131,22 +140,53 @@ class BookContentsManager extends Component
 
     private function applyTemplate($template, $successMessage)
     {
+        // Si no hay libro (creación), guardar en array temporal
+        if (!$this->book || !$this->book->exists) {
+            $this->contents = [];
+            foreach ($template as $index => $chapter) {
+                $this->contents[] = array_merge($chapter, [
+                    'id' => uniqid(),
+                    'sort_order' => $index,
+                    'chapter_number' => $this->extractChapterNumber($chapter['chapter_title'])
+                ]);
+            }
+            $this->dispatch('template-applied', message: $successMessage);
+            return;
+        }
+
+        // Si hay libro, guardar en base de datos
         BookContent::where('book_id', $this->book->id)->delete();
 
         foreach ($template as $index => $chapter) {
-
             BookContent::create([
                 'book_id' => $this->book->id,
                 'chapter_title' => $chapter['chapter_title'],
                 'description' => $chapter['description'],
                 'sort_order' => $index,
                 'chapter_number' => $this->extractChapterNumber($chapter['chapter_title']),
-                'level' => $chapter['level'] // ← ESTA ES LA LÍNEA CLAVE
+                'level' => $chapter['level']
             ]);
         }
 
         $this->loadContents();
         $this->dispatch('template-applied', message: $successMessage);
+    }
+
+    // Procesar capítulos importados (para creación - temporal)
+    private function processImportedChaptersTemporary($chapters)
+    {
+        $this->contents = [];
+
+        foreach ($chapters as $index => $chapter) {
+            $this->contents[] = [
+                'id' => uniqid(),
+                'chapter_title' => trim($chapter['title']),
+                'chapter_number' => $this->extractChapterNumber($chapter['title']),
+                'sort_order' => $index,
+                'level' => $this->calculateLevel($chapter['title']),
+                'description' => $this->generateDescription($chapter['title'])
+            ];
+        }
     }
 
     // Importar desde texto plano
@@ -157,11 +197,17 @@ class BookContentsManager extends Component
         ]);
 
         $chapters = $this->extractChaptersFromText($this->importText);
-        $this->processImportedChapters($chapters);
+
+        // Si no hay libro (creación), procesar en array temporal
+        if (!$this->book || !$this->book->exists) {
+            $this->processImportedChaptersTemporary($chapters);
+        } else {
+            $this->processImportedChapters($chapters);
+        }
 
         $this->importText = '';
         $this->showImportForm = false;
-        $this->dispatch('import-success', message: 'Índice importado exitosamente desde texto.');
+        $this->dispatch('import-success', message: 'Índice importado exitosamente.');
     }
 
     // Extraer capítulos del texto
@@ -254,6 +300,18 @@ class BookContentsManager extends Component
             return;
         }
 
+        // Si no hay libro (creación), eliminar del array temporal
+        if (!$this->book || !$this->book->exists) {
+            $this->contents = array_filter($this->contents, function ($content) {
+                return !in_array($content['id'], $this->selectedItems);
+            });
+            $this->selectedItems = [];
+            $this->selectAll = false;
+            $this->dispatch('selected-deleted', message: count($this->selectedItems) . ' elemento(s) eliminado(s) exitosamente.');
+            return;
+        }
+
+        // Si hay libro, eliminar de base de datos
         BookContent::where('book_id', $this->book->id)
             ->whereIn('id', $this->selectedItems)
             ->delete();
@@ -264,6 +322,16 @@ class BookContentsManager extends Component
 
     public function clearIndex()
     {
+        // Si no hay libro (creación), limpiar array temporal
+        if (!$this->book || !$this->book->exists) {
+            $this->contents = [];
+            $this->selectedItems = [];
+            $this->selectAll = false;
+            $this->dispatch('index-cleared', message: 'Índice eliminado completamente.');
+            return;
+        }
+
+        // Si hay libro, eliminar de base de datos
         BookContent::where('book_id', $this->book->id)->delete();
         $this->loadContents();
         $this->dispatch('index-cleared', message: 'Índice eliminado completamente.');
@@ -275,14 +343,15 @@ class BookContentsManager extends Component
         $text = "ÍNDICE\n\n";
 
         foreach ($this->contents as $content) {
-            $text .= "{$content['chapter_title']}\n";
+            // Agregar indentación basada en el nivel
+            $indentation = str_repeat('  ', $content['level'] ?? 0);
+            $text .= $indentation . "{$content['chapter_title']}\n";
         }
 
         // Copiar al portapapeles usando JavaScript
         $this->dispatch('copy-to-clipboard', text: $text);
         $this->dispatch('export-success', message: 'Índice copiado al portapapeles.');
     }
-
     // Métodos básicos CRUD
     public function addContent()
     {
@@ -292,6 +361,16 @@ class BookContentsManager extends Component
             'form.level' => 'required|integer|min:0|max:4'
         ]);
 
+        // Si no hay libro (creación), guardar en array temporal
+        if (!$this->book || !$this->book->exists) {
+            $this->contents[] = array_merge($this->form, ['id' => uniqid()]);
+            $this->resetForm();
+            $this->showForm = false;
+            $this->dispatch('content-added', message: 'Elemento agregado (se guardará al crear el libro).');
+            return;
+        }
+
+        // Si hay libro, guardar en base de datos
         BookContent::create(array_merge($this->form, [
             'book_id' => $this->book->id
         ]));
@@ -316,7 +395,7 @@ class BookContentsManager extends Component
             'chapter_number' => $content['chapter_number'] ?? null,
             'description' => $content['description'] ?? '',
             'sort_order' => $content['sort_order'] ?? 0,
-            'level' => $content['level'] ?? 0 // Asegurar que se carga el nivel
+            'level' => $content['level'] ?? 0
         ];
 
         $this->editingIndex = $index;
@@ -331,8 +410,25 @@ class BookContentsManager extends Component
             'form.level' => 'required|integer|min:0|max:4'
         ]);
 
+        // Si no hay libro (creación), actualizar array temporal
+        if (!$this->book || !$this->book->exists) {
+            if (isset($this->contents[$this->editingIndex])) {
+                $this->contents[$this->editingIndex] = array_merge(
+                    $this->form,
+                    ['id' => $this->contents[$this->editingIndex]['id']]
+                );
+            }
+            $this->resetForm();
+            $this->showForm = false;
+            $this->dispatch('content-updated', message: 'Elemento actualizado.');
+            return;
+        }
+
+        // Si hay libro, actualizar en base de datos
         $content = BookContent::find($this->contents[$this->editingIndex]['id']);
-        $content->update($this->form);
+        if ($content) {
+            $content->update($this->form);
+        }
 
         $this->resetForm();
         $this->loadContents();
@@ -347,6 +443,14 @@ class BookContentsManager extends Component
             return;
         }
 
+        // Si no hay libro (creación), eliminar del array temporal
+        if (!$this->book || !$this->book->exists) {
+            array_splice($this->contents, $index, 1);
+            $this->dispatch('content-deleted', message: 'Elemento eliminado.');
+            return;
+        }
+
+        // Si hay libro, eliminar de base de datos
         $contentId = $this->contents[$index]['id'];
         BookContent::where('id', $contentId)->delete();
 
@@ -397,11 +501,12 @@ class BookContentsManager extends Component
 
     public function resetForm()
     {
+        $nextOrder = count($this->contents);
         $this->form = [
             'chapter_title' => '',
             'chapter_number' => null,
             'description' => '',
-            'sort_order' => count($this->contents),
+            'sort_order' => $nextOrder,
             'level' => 0
         ];
         $this->editingIndex = null;

@@ -23,11 +23,11 @@
             ])
 
             <div class="mt-8">
-                @include('admin.books.partials.contributors-form', ['book' => null])
+                @livewire('book-contributors-manager', ['book' => null], key('contributors-create'))
             </div>
 
             <div class="mt-8">
-                @include('admin.books.partials.initial-contents-form', ['book' => null])
+                @livewire('book-contents-manager', ['book' => null], key('contents-create'))
             </div>
         </div>
     </div>
